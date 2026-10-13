@@ -13,7 +13,7 @@ const fx = await serve(path.join(here, "fixtures", "bad"), 8101);
 const fx2 = await serve(path.join(here, "fixtures", "clean"), 8102);
 const dev = await startDev(8100);
 const b = await puppeteer.launch({ executablePath: process.env.HS_LOCAL_CHROME, headless: true, args: ["--no-sandbox"] });
-const BASE = "http://localhost:8100";
+const BASE = "http://127.0.0.1:8100";
 let fail = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fail++; };
 const errors = [];
 async function newPage(ctx, w = 1200) {

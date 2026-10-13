@@ -11,7 +11,7 @@ import { buildReport } from "../public/rules.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TYPES = { ".html": "text/html; charset=utf-8", ".png": "image/png", ".txt": "text/plain", ".xml": "application/xml", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif", ".ico": "image/x-icon", ".woff2": "font/woff2", ".woff": "font/woff", ".mp3": "audio/mpeg", ".webm": "video/webm", ".mp4": "video/mp4" };
 
-export function serve(dir, port) {
+export function serve(dir, port, host = "127.0.0.1") {
   return new Promise((res) => {
     const s = http.createServer((req, rsp) => {
       let p = decodeURIComponent(req.url.split("?")[0].split("#")[0]);
@@ -21,7 +21,7 @@ export function serve(dir, port) {
       rsp.writeHead(200, { "content-type": TYPES[path.extname(f)] || "application/octet-stream" });
       if (req.method === "HEAD") return rsp.end();
       fs.createReadStream(f).pipe(rsp);
-    }).listen(port, "127.0.0.1", () => res(s));
+    }).listen(port, host, () => res(s));
   });
 }
 

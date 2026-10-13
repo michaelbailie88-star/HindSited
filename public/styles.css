@@ -254,6 +254,20 @@ details.cat[open] > summary::after { content: "\2212"; }
   details.cat .cat-body { display: grid !important; }
   .cta { background: #fff; color: var(--ink); border: 2px solid var(--ink); break-inside: avoid; }
   .cta p { color: var(--ink-2); }
-  .cta::after { content: "thelazycreatorcompany.com"; font-weight: 700; }
   a { text-decoration: none; }
 }
+
+/* account */
+.flash { background: var(--amber-soft); color: #7a4700; border-radius: 10px; padding: 12px 14px; font-weight: 600; }
+.flash.ok { background: var(--ok-soft); color: var(--ok); }
+.acct-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+.brand-form { display: grid; gap: 12px; max-width: 520px; margin: 10px 0 8px; }
+.brand-form label { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; }
+.brand-form input { font: 400 16px/1.3 var(--body); padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
+.brand-form .btn { justify-self: start; }
+.brand-prev { display: flex; align-items: center; gap: 14px; }
+.brand-prev img { max-height: 48px; max-width: 180px; object-fit: contain; }
+.brand-mark-rep { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; font: 700 13px/1.2 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.brand-mark-rep img { max-height: 44px; max-width: 160px; object-fit: contain; }
+.print-only { display: none; }
+@media print { .print-only { display: inline; font-weight: 700; } }

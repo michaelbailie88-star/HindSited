@@ -15,7 +15,7 @@ export default async (req) => {
   const store = reports();
   const base = await store.get(id, { type: "json" });
   if (!base || base.state !== "queued") return;
-  const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, createdAt: base.createdAt };
+  const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, brand: base.brand || null, createdAt: base.createdAt };
   let chain = Promise.resolve();
   // saves run strictly in order so a late progress update never overwrites the result
   const save = (data) => (chain = chain.then(() => store.setJSON(id, { ...keep, ...data, at: new Date().toISOString() })).catch(() => {}));

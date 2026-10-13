@@ -3,7 +3,9 @@
 import crypto from "node:crypto";
 import { json, normalizeUrl, assertPublicHost, siteKey } from "../lib/guard.mjs";
 import { sessionEmail } from "../lib/session.mjs";
-import { getUser, saveUser, newUser, reports, claims, appSecret, OWNER_EMAILS } from "../lib/store.mjs";
+import { getUser, saveUser, newUser, reports, claims, appSecret } from "../lib/store.mjs";
+import { effectivePlan } from "../lib/entitle.mjs";
+import { refreshSubscriptions } from "../lib/stripe.mjs";
 import { PLANS, monthKey } from "../lib/plans.mjs";
 import { refund } from "../lib/refund.mjs";
 
@@ -22,7 +24,9 @@ export default async (req) => {
   }
   const site = siteKey(url.hostname);
   const user = (await getUser(email)) || newUser(email);
-  const planId = OWNER_EMAILS.includes(email) ? "owner" : user.plan || "free";
+  if ((user.subs || []).length && Netlify.env.get("STRIPE_SECRET_KEY")) await refreshSubscriptions(user);
+  const ent = effectivePlan(user, email);
+  const planId = ent.plan;
   const plan = PLANS[planId] || PLANS.free;
   const month = monthKey();
   if (!user.usage || user.usage.month !== month) user.usage = { month, scans: 0 };
@@ -37,7 +41,7 @@ export default async (req) => {
     }
     user.freeUsed = { site, reportId: id, at: new Date().toISOString() };
   } else {
-    const allowedBiz = plan.businesses + (user.extraBusinesses || 0);
+    const allowedBiz = plan.businesses + ent.extra;
     if (!user.businesses.includes(site)) {
       if (user.businesses.length >= allowedBiz) return json({ paywall: true, reason: "business-limit", businesses: user.businesses, allowed: allowedBiz }, 402);
       user.businesses.push(site);
@@ -46,7 +50,8 @@ export default async (req) => {
   }
   user.usage.scans++;
   user.reports = [{ id, url: url.href, site, at: new Date().toISOString() }, ...(user.reports || [])].slice(0, 100);
-  await reports().setJSON(id, { state: "queued", url: url.href, site, owner: email, free: planId === "free", createdAt: new Date().toISOString() });
+  const brand = plan.whiteLabel && user.brand && user.brand.name ? user.brand : null;
+  await reports().setJSON(id, { state: "queued", url: url.href, site, owner: email, free: planId === "free", brand, createdAt: new Date().toISOString() });
   await saveUser(user);
 
   // hand off to the background scanner (up to 15 minutes)

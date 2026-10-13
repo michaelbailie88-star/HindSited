@@ -115,7 +115,8 @@ function showPaywall(d, url) {
     "free-used": `You've already used your free check${d.site ? " (on <b>" + esc(d.site) + "</b>)" : ""}.`,
     "site-used": `<b>${esc(d.site || host)}</b> has already had its free check.`,
     "business-limit": `Your plan covers ${d.allowed} business${d.allowed === 1 ? "" : "es"} and they're all in use.`,
-    "scan-limit": `You've used all ${d.allowed} checks included this month.`
+    "scan-limit": `You've used all ${d.allowed} checks included this month.`,
+    "upgrade": "Pick the plan that fits."
   }[d.reason] || "You've reached the limit of your free check.";
   const card = (k) => { const p = PRICES[k]; return `<div class="plan${k === "solo" ? " plan-main" : ""}"><h3>${p.name}</h3><p class="muted">${p.for}</p>
     <p class="price"><b>$${p.month}</b>/month</p><p class="muted small">or $${p.once} once for lifetime access</p>
@@ -134,21 +135,65 @@ function showPaywall(d, url) {
   p.querySelectorAll("[data-plan]").forEach((b) => (b.onclick = () => checkout(b.dataset.plan, b.dataset.int)));
 }
 async function checkout(plan, interval) {
-  const { data } = await api("/checkout", { method: "POST", body: JSON.stringify({ plan, interval }) });
+  const { status, data } = await api("/checkout", { method: "POST", body: JSON.stringify({ plan, interval }) });
+  if (status === 401) { me = { signedIn: false }; renderAccount(); const er = $("#payErr"); if (er) { er.textContent = "Your sign-in expired. Check a site again to get a new sign-in link."; er.hidden = false; } return; }
   if (data.url) { location.href = data.url; return; }
   const er = $("#payErr"); if (er) { er.textContent = data.error || "Checkout isn't available yet."; er.hidden = false; }
 }
 
-async function showMyReports() {
+async function showMyReports(flash) {
   const { data } = await api("/me");
+  if (!data.signedIn) { me = { signedIn: false }; renderAccount(); goHome(); return; }
   me = data; renderAccount();
   const rows = (data.reports || []).map((r) => `<li><a href="/r/${esc(r.id)}">${esc(r.site || r.url)}</a><span class="muted small">${esc(new Date(r.at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }))}</span></li>`).join("");
-  history.pushState({}, "", "/account");
-  panel(`<div class="card-panel wide"><p class="eyebrow">Your account</p><h2 class="panel-h">${esc(data.email || "")}</h2>
-    <p>Plan: <b>${esc(data.planLabel || "Free")}</b>${data.scansAllowed ? ` \u00b7 ${data.scansUsed} of ${data.scansAllowed} checks used this month` : ""}${data.businessesAllowed && data.plan !== "free" ? ` \u00b7 ${data.businesses.length} of ${data.businessesAllowed} businesses` : ""}</p>
+  if (location.pathname !== "/account") history.pushState({}, "", "/account");
+  const paid = data.plan !== "free";
+  const planLine = `Plan: <b>${esc(data.planLabel || "Free")}</b>${data.lifetime ? " (lifetime)" : data.monthly && data.monthly.length ? " (monthly)" : ""}` +
+    (data.scansAllowed ? ` \u00b7 ${data.scansUsed} of ${data.scansAllowed} checks used this month` : "") +
+    (paid && data.businessesAllowed ? ` \u00b7 ${data.businesses.length} of ${data.businessesAllowed} business${data.businessesAllowed === 1 ? "" : "es"}` : "");
+  const brand = data.brand || {};
+  const p = panel(`<div class="card-panel wide">
+    ${flash ? `<p class="flash ${flash.ok ? "ok" : ""}">${esc(flash.text)}</p>` : ""}
+    <p class="eyebrow">Your account</p><h2 class="panel-h">${esc(data.email || "")}</h2>
+    <p>${planLine}</p>
+    <div class="acct-actions">
+      ${!paid ? `<button class="btn" id="upgrade">See plans</button>` : ""}
+      ${data.plan === "agency" ? `<button class="btn ghost" id="addBiz">Add a business ($6/month)</button>` : ""}
+      ${data.hasBilling ? `<button class="btn ghost" id="billing">Billing, invoices and cancelling</button>` : ""}
+    </div>
+    ${paid && data.businesses.length ? `<p class="muted small">Businesses on your plan: ${data.businesses.map(esc).join(", ")}</p>` : ""}
+    ${data.whiteLabel ? `<h3 class="sub-h">Your branding on reports</h3>
+      <p class="muted small">Your name and logo replace HindSited on reports and PDFs you share with clients.</p>
+      <form id="brandForm" class="brand-form">
+        <label>Business name<input id="bName" maxlength="60" value="${esc(brand.name || "")}" placeholder="Your agency name"></label>
+        <label>Website (optional)<input id="bSite" maxlength="120" value="${esc(brand.site || "")}" placeholder="https://youragency.com"></label>
+        <label>Logo (PNG, JPG or WebP, under 200 KB)<input id="bLogo" type="file" accept="image/png,image/jpeg,image/webp"></label>
+        ${brand.logo ? `<div class="brand-prev"><img src="${esc(brand.logo)}" alt="Your logo"><button type="button" class="linkish" id="bRemove">Remove logo</button></div>` : ""}
+        <button class="btn" type="submit">Save branding</button><span class="tool-note" id="bNote" role="status"></span>
+      </form>` : ""}
     <h3 class="sub-h">Your reports</h3>${rows ? `<ul class="report-list">${rows}</ul>` : `<p class="muted">No reports yet.</p>`}
+    <p class="form-err" id="acErr" role="alert" hidden></p>
     <button type="button" class="linkish" id="acBack">\u2190 Check a site</button></div>`);
   $("#acBack").onclick = goHome;
+  const showErr = (m) => { const e = $("#acErr"); e.textContent = m; e.hidden = false; };
+  if ($("#upgrade")) $("#upgrade").onclick = () => showPaywall({ reason: "upgrade" });
+  if ($("#addBiz")) $("#addBiz").onclick = async () => { const r = await api("/checkout", { method: "POST", body: JSON.stringify({ plan: "extra", interval: "month" }) }); if (r.data.url) location.href = r.data.url; else showErr(r.data.error || "Couldn't start checkout."); };
+  if ($("#billing")) $("#billing").onclick = async () => { const r = await api("/billing", { method: "POST" }); if (r.data.url) location.href = r.data.url; else showErr(r.data.error || "Billing couldn't open."); };
+  const bf = $("#brandForm");
+  if (bf) {
+    let logo;
+    if ($("#bRemove")) $("#bRemove").onclick = () => { logo = null; $(".brand-prev").remove(); };
+    bf.onsubmit = async (e) => {
+      e.preventDefault();
+      const f = $("#bLogo").files[0];
+      if (f) {
+        if (f.size > 200 * 1024) { $("#bNote").textContent = "That logo is over 200 KB."; return; }
+        logo = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+      }
+      const r = await api("/brand", { method: "POST", body: JSON.stringify({ name: $("#bName").value, site: $("#bSite").value, ...(logo !== undefined ? { logo } : {}) }) });
+      $("#bNote").textContent = r.data.brand ? "Saved. New reports will use your branding." : r.data.error || "Couldn't save.";
+    };
+  }
 }
 
 // ---------------------------------------------------------------- progress
@@ -178,7 +223,7 @@ async function followReport(id, url) {
   if (!data || data.state !== "done" || !data.scan) { showError("The check took too long. The site may be very slow. Try again in a few minutes."); return; }
   const scan = data.scan;
   const report = buildReport(scan);
-  await showReport(report, scan, { id, mine: data.mine, createdAt: data.createdAt || data.at });
+  await showReport(report, scan, { id, mine: data.mine, createdAt: data.createdAt || data.at, brand: data.brand || null });
 }
 
 function showStages(stages) {
@@ -201,7 +246,13 @@ async function route() {
   const path = location.pathname;
   const m = path.match(/^\/r\/([a-f0-9-]{20,40})\/?$/i);
   if (m) { followReport(m[1]); return; }
-  if (path === "/account" && me.signedIn) { showMyReports(); return; }
+  if (path === "/account") {
+    const q0 = new URLSearchParams(location.search);
+    const c = q0.get("checkout");
+    const flash = c === "success" ? { ok: true, text: "Payment received. Your plan is active. Thank you!" } : c === "cancelled" ? { text: "Checkout was cancelled. You haven't been charged." } : c === "pending" ? { text: "Your payment is still processing. Refresh this page in a minute." } : c === "error" ? { text: "We couldn't confirm that payment. If you were charged, email thelazycreatorco@gmail.com and we'll sort it out." } : null;
+    if (c) history.replaceState({}, "", "/account");
+    if (me.signedIn) { showMyReports(flash); return; }
+  }
   const q = new URLSearchParams(location.search);
   if (q.get("signin") === "expired") { history.replaceState({}, "", "/"); view("home"); errEl.textContent = "That sign-in link has expired or was already used. Enter your site again to get a new one."; errEl.hidden = false; return; }
   const pending = q.get("scan");
@@ -297,7 +348,7 @@ async function showReport(report, scan, meta = {}) {
       <div class="num"><div><b>${report.score}</b><small>out of 100</small></div></div>
     </div>
     <div class="rep-title">
-      <p class="eyebrow">Your HindSited report</p>
+      ${meta.brand ? `<div class="brand-mark-rep">${meta.brand.logo ? `<img src="${esc(meta.brand.logo)}" alt="${esc(meta.brand.name)}">` : ""}<span>Website report by ${esc(meta.brand.name)}</span></div>` : `<p class="eyebrow">Your HindSited report</p>`}
       <h2>${esc(host)}: ${esc(report.grade.label)}</h2>
       <p>${esc(report.grade.note)}</p>
       <div class="tally">${nowN ? `<span class="chip now">${nowN} fix now</span>` : ""}${soonN ? `<span class="chip soon">${soonN} fix soon</span>` : ""}${worthN ? `<span class="chip">${worthN} worth fixing</span>` : ""}<span class="chip ok">${report.passed.length} checks passed</span></div>
@@ -339,8 +390,8 @@ async function showReport(report, scan, meta = {}) {
   const okPages = scan.pages.filter((p) => p.status >= 200 && p.status < 300);
   html += `<div class="rep-sec"><h3>Pages we read</h3><ol class="pages-list"><li>${esc(pagePath(scan.render.finalUrl))}</li>${okPages.map((p) => `<li>${esc(pagePath(p.finalUrl || p.url))}</li>`).join("")}</ol></div>`;
 
-  html += `<div class="cta"><div><h3>Want these fixed?</h3><p>The Lazy Creator Company builds fast, hand-coded websites from $500, with every issue in this report handled.</p></div><a class="btn" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>
-  <div class="again no-print"><button id="again">Check another site</button></div></div>`;
+  html += meta.brand ? `<div class="cta"><div><h3>Want these fixed?</h3><p>${esc(meta.brand.name)} can take care of every issue in this report.${meta.brand.site ? ` <span class="print-only">${esc(meta.brand.site.replace(/^https?:\/\//, ""))}</span>` : ""}</p></div>${meta.brand.site ? `<a class="btn" href="${esc(meta.brand.site)}" target="_blank" rel="noopener">Get in touch</a>` : ""}</div>` : `<div class="cta"><div><h3>Want these fixed?</h3><p>The Lazy Creator Company builds fast, hand-coded websites from $500, with every issue in this report handled. <span class="print-only">thelazycreatorcompany.com</span></p></div><a class="btn" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>`;
+  html += `<div class="again no-print"><button id="again">Check another site</button></div></div>`;
 
   const rep = $("#report");
   rep.innerHTML = html;
