@@ -5,9 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { launchBrowser } from "../netlify/lib/browser.mjs";
-import { renderAudit } from "../netlify/lib/render.mjs";
-import { checkPage, checkSite } from "../netlify/lib/crawl.mjs";
-import { checkLinks } from "../netlify/lib/links.mjs";
+import { fullScan } from "../netlify/lib/pipeline.mjs";
 import { buildReport } from "../public/rules.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,22 +26,11 @@ export function serve(dir, port) {
 }
 
 export async function scanLocal(browser, url) {
-  const [render, desk] = await Promise.all([renderAudit(browser, url, { budgetMs: 60000 }), renderAudit(browser, url, { budgetMs: 60000, mode: "desktop" })]);
-  if (!render.ok) throw new Error("render failed " + render.status);
-  render.desktopFold = desk.desktopFold; render.shots.desktop = desk.shot;
-  const home = new URL(render.finalUrl);
-  const cand = render.audit.links.filter((l) => l.internal && l.url.replace(/\/$/, "") !== home.href.replace(/\/$/, "")).map((l) => l.url).slice(0, 24);
-  const pages = await Promise.all(cand.map((u) => checkPage(u)));
-  const site = await checkSite(home.origin);
-  const items = new Map();
-  for (const l of render.audit.links) if (!cand.includes(l.url) && l.url.replace(/\/$/, "") !== home.href.replace(/\/$/, "")) items.set(l.url, { url: l.url, internal: l.internal, text: l.text, from: render.finalUrl, kind: "page" });
-  for (const p of pages) { for (const l of p.links) if (!items.has(l.url) && !cand.includes(l.url) && l.url.replace(/\/$/, "") !== home.href.replace(/\/$/, "")) items.set(l.url, { url: l.url, internal: l.internal, text: l.text, from: p.url, kind: "page" }); for (const im of p.images) if (!items.has(im)) items.set(im, { url: im, internal: true, from: p.url, kind: "image" }); }
-  const list = [...items.values()].filter((x) => x.internal); // sandbox has no outside internet
-  const res = await checkLinks(list);
-  const links = list.map((x, i) => ({ ...x, ...res[i] }));
-  for (const p of pages) if (p.status === 404 || p.status >= 500) links.push({ url: p.url, broken: true, reason: String(p.status), kind: "page", internal: true, from: render.finalUrl });
-  const scan = { render, pages, site, links, linksChecked: true, speed: {} };
-  return { scan, report: buildReport(scan) };
+  const out = await fullScan(browser, url, {});
+  if (out.error) throw new Error("render failed");
+  // the sandbox has no outside internet: ignore external link results
+  out.scan.links = out.scan.links.filter((l) => l.internal);
+  return { scan: out.scan, report: buildReport(out.scan) };
 }
 
 const EXPECT = {
@@ -52,7 +39,7 @@ const EXPECT = {
     mustNot: ["noindex", "no_viewport", "no_contact_path"]
   },
   clean: { must: [], mustNot: "*", allow: ["no_https"] },
-  bad2: { must: ["bad_tel_link", "bad_mailto", "noindex", "dead_links"], mustNot: ["no_tap_to_call", "no_cta_fold", "no_reviews_home", "weak_title"] }
+  bad2: { must: ["bad_tel_link", "bad_mailto", "noindex", "dead_links", "no_reviews_home", "old_copyright"], mustNot: ["no_tap_to_call", "no_cta_fold", "weak_title"], deadOnly: ["/shop", "/reviews"] }
 };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -75,6 +62,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (missing.length) { fail++; console.log("  MISSING:", missing.join(", ")); }
     if (unexpected.length) { fail++; console.log("  UNEXPECTED:", unexpected.join(", ")); }
     if (extra.length) console.log("  (also found, not in expect list):", extra.join(", "));
+    if (e.deadOnly) {
+      const dl = report.findings.find((f) => f.rule === "dead_links");
+      const bad = (dl ? dl.items : []).filter((i) => !e.deadOnly.some((p) => i.evidence.includes(p + " ")));
+      if (bad.length) { fail++; console.log("  WRONG DEAD LINKS:", bad.map((i) => i.evidence).join(" | ")); }
+    }
     for (const f of report.findings) console.log(`  - [${f.rule}] ${f.items.slice(0, 2).map((i) => i.evidence).join(" | ")}`);
   }
   await browser.close();

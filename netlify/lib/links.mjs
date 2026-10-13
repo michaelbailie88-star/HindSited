@@ -8,6 +8,10 @@ export async function checkLink(url, { internal = false } = {}) {
   let u;
   try { u = new URL(url); } catch { return { url, broken: true, reason: "bad-url" }; }
   const walled = BOT_WALLED.test(u.hostname);
+  // Cloudflare email protection and similar helper URLs only work in a browser
+  if (/^\/cdn-cgi\//.test(u.pathname)) return { url, broken: false, skipped: true };
+  // checkouts, logins and sign-ups often refuse robots even when they work for people
+  const gated = /\/(checkouts?|cart|login|log-in|signin|sign-in|signup|sign-up|register|account|subscribe|auth|oauth)(\/|$)/i.test(u.pathname);
   try {
     let r = await safeFetch(u.href, { method: "HEAD", timeout: 7000 });
     if ([400, 401, 403, 405, 406, 429, 500, 501, 502, 503].includes(r.status) || r.status === 0) {
@@ -15,7 +19,7 @@ export async function checkLink(url, { internal = false } = {}) {
     }
     const s = r.status;
     let broken = false, reason = "";
-    if (!walled && (s === 404 || s === 410)) { broken = true; reason = String(s); }
+    if (!walled && !gated && (s === 404 || s === 410)) { broken = true; reason = String(s); }
     else if (!walled && internal && s >= 500) { broken = true; reason = String(s); }
     return { url, status: s, finalUrl: r.url, broken, reason };
   } catch (e) {

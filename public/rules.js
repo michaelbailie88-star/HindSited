@@ -327,7 +327,8 @@ export function buildReport(scan) {
   const okPages = pages.filter((p) => p.status >= 200 && p.status < 300 && !p.error && (p.finalUrl || p.url));
   if (okPages.length >= 3) {
     ran.add("pages_missing_desc");
-    const nod = okPages.filter((p) => !p.desc);
+    const seenP = new Set();
+    const nod = okPages.filter((p) => !p.desc).filter((p) => { const k = (p.finalUrl || p.url).replace(/[#?].*$/, "").replace(/\/$/, ""); if (seenP.has(k)) return false; seenP.add(k); return true; });
     if (nod.length >= 2 && nod.length / okPages.length >= 0.4) push("pages_missing_desc", nod.slice(0, 8).map((p) => ({ evidence: short(p.finalUrl || p.url), page: p.finalUrl || p.url })), { count: nod.length, total: okPages.length });
   }
 

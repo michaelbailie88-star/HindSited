@@ -92,6 +92,22 @@ export function pageAudit(opts) {
       if (hit) bestCopyright = { year: cy.year, index: hit.text.indexOf(String(cy.year)), length: 4, node: hit.node, text: hit.text };
     }
   }
+  // footers are often faded in by scroll animations (opacity 0 until seen):
+  // fall back to footer text that isn't actually display:none/hidden
+  if (!bestCopyright) {
+    const foot = Array.from(document.querySelectorAll('footer, [class*="footer" i], [id*="footer" i]')).filter((f) => !f.checkVisibility || f.checkVisibility({ checkVisibilityCSS: true }));
+    for (const f of foot) {
+      const w2 = document.createTreeWalker(f, NodeFilter.SHOW_TEXT);
+      let tn;
+      while ((tn = w2.nextNode())) {
+        const pe = tn.parentElement;
+        if (!pe || pe.closest(SKIP_SEL) || (pe.checkVisibility && !pe.checkVisibility({ checkVisibilityCSS: true }))) continue;
+        const cy = TR.copyrightYear(tn.nodeValue);
+        if (cy && (!bestCopyright || cy.year > bestCopyright.year)) bestCopyright = { ...cy, node: tn, text: tn.nodeValue };
+      }
+      if (bestCopyright) break;
+    }
+  }
   if (bestCopyright && bestCopyright.year < nowYear && bestCopyright.year > 1990) {
     add("old_copyright", bestCopyright.text, rangeRect(bestCopyright.node, bestCopyright.index, bestCopyright.length), { year: bestCopyright.year, current: nowYear });
   }
@@ -261,7 +277,8 @@ export function pageAudit(opts) {
   // ---------------------------------------------------------------- signals
   const reviewWidget = !!document.querySelector('[class*="elfsight"],[class*="trustindex"],[class*="yotpo"],[class*="jdgm"],[class*="judgeme"],[class*="stamped"],[class*="okendo"],[class*="loox"],[class*="trustpilot"],[class*="testimonial"],[id*="testimonial"],iframe[src*="review"],iframe[src*="elfsight"]');
   const signals = {
-    reviews: reviewWidget || TR.R.reviews.test(allText),
+    // menu links named "Reviews" don't count: the reviews must be on the page itself
+    reviews: reviewWidget || TR.R.reviews.test(texts.filter((t) => !t.el.closest("a, nav, header, footer, [role=navigation], button")).map((t) => t.text).join("\n")),
     hours: TR.R.hours.test(allText),
     address: TR.R.address.test(allText),
     phoneShown: !!phoneHit,
