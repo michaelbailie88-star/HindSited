@@ -10,12 +10,12 @@ process.env.HS_LOCAL_MAIL = "1";
 globalThis.Netlify = { env: { get: (k) => process.env[k] } };
 const load = async (f) => (await import("../netlify/functions/" + f + ".mjs"));
 const mods = {};
-for (const f of ["auth-start", "auth-verify", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand"]) mods[f] = await load(f);
+for (const f of ["auth-start", "auth-verify", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message"]) mods[f] = await load(f);
 const routes = {};
 for (const m of Object.values(mods)) { const p = m.config.path; (Array.isArray(p) ? p : [p]).forEach((x) => (routes[x] = m)); }
 export const { outbox } = await import("../netlify/lib/mail.mjs");
 const pub = path.join(here, "..", "public");
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".txt": "text/plain" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".txt": "text/plain", ".png": "image/png" };
 export function startDev(port = 8100) {
   return new Promise((res) => {
     const s = http.createServer(async (req, rsp) => {
@@ -32,6 +32,10 @@ export function startDev(port = 8100) {
       }
       let f = path.join(pub, p === "/" ? "index.html" : p);
       if (/^\/(r\/|account)/.test(p)) f = path.join(pub, "index.html");
+      if (p === "/reviews") f = path.join(pub, "booster.html");
+      if (p.startsWith("/review/")) f = path.join(pub, "review.html");
+      if (p === "/quotes") f = path.join(pub, "quotes.html");
+      if (p.startsWith("/q/")) f = path.join(pub, "quote.html");
       if (!f.startsWith(pub) || !fs.existsSync(f)) { rsp.writeHead(404); return rsp.end("nf"); }
       rsp.writeHead(200, { "content-type": TYPES[path.extname(f)] || "application/octet-stream" }); fs.createReadStream(f).pipe(rsp);
     }).listen(port, "127.0.0.1", () => res(s));

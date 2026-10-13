@@ -44,7 +44,7 @@ function renderAccount() {
   const a = $("#account");
   if (!a) return;
   if (!me.signedIn) { a.innerHTML = ""; return; }
-  a.innerHTML = `<span class="acct-email">${esc(me.email)}</span><button type="button" class="linkish" id="myReports">My reports</button><button type="button" class="linkish" id="signOut">Sign out</button>`;
+  a.innerHTML = `<span class="acct-email">${esc(me.email)}</span><button type="button" class="linkish" id="myReports">My account</button><button type="button" class="linkish" id="signOut">Sign out</button>`;
   $("#signOut").onclick = async () => { await api("/me", { method: "POST" }); me = { signedIn: false }; renderAccount(); goHome(); };
   $("#myReports").onclick = showMyReports;
 }

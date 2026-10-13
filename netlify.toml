@@ -15,6 +15,16 @@
   status = 200
 
 [[redirects]]
+  from = "/reviews"
+  to = "/booster.html"
+  status = 200
+
+[[redirects]]
+  from = "/review/*"
+  to = "/review.html"
+  status = 200
+
+[[redirects]]
   from = "/account"
   to = "/index.html"
   status = 200
