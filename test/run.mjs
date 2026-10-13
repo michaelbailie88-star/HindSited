@@ -28,8 +28,9 @@ export function serve(dir, port) {
 }
 
 export async function scanLocal(browser, url) {
-  const render = await renderAudit(browser, url, { budgetMs: 60000 });
+  const [render, desk] = await Promise.all([renderAudit(browser, url, { budgetMs: 60000 }), renderAudit(browser, url, { budgetMs: 60000, mode: "desktop" })]);
   if (!render.ok) throw new Error("render failed " + render.status);
+  render.desktopFold = desk.desktopFold; render.shots.desktop = desk.shot;
   const home = new URL(render.finalUrl);
   const cand = render.audit.links.filter((l) => l.internal && l.url.replace(/\/$/, "") !== home.href.replace(/\/$/, "")).map((l) => l.url).slice(0, 24);
   const pages = await Promise.all(cand.map((u) => checkPage(u)));

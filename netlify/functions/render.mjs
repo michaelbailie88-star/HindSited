@@ -6,19 +6,21 @@ export default async (req) => {
   const isGet = req.method === "GET";
   const reply = (data, status = 200) => json(isGet && status !== 200 ? { ...data, httpStatus: status } : data, isGet ? 200 : status);
   if (req.method !== "POST" && !isGet) return reply({ error: "Use POST." }, 405);
-  let url;
+  let url, mode = "mobile";
   try {
-    const body = isGet ? { url: new URL(req.url).searchParams.get("url") } : await req.json();
+    const body = isGet ? Object.fromEntries(new URL(req.url).searchParams) : await req.json();
+    mode = body.mode === "desktop" ? "desktop" : "mobile";
     url = normalizeUrl(body.url);
     await assertPublicHost(url.hostname);
   } catch (e) {
-    const msg = e.message === "blocked-host" ? "That address isn't a public website." : /ENOTFOUND|EAI_AGAIN/.test(e.code || e.message) ? "We couldn't find that website. Check the spelling." : e.message;
+    const msg = e.message === "blocked-host" ? "That address isn't a public website." : /ENOTFOUND|EAI_AGAIN|EBUSY|getaddrinfo/.test((e.code || "") + e.message) ? "We couldn't find that website. Check the spelling." : e.message;
     return reply({ error: msg }, 400);
   }
   let browser;
   try {
     browser = await launchBrowser();
-    const out = await renderAudit(browser, url.href, { budgetMs: 52000 });
+    const out = await renderAudit(browser, url.href, { budgetMs: 50000, mode });
+    if (mode === "desktop") return reply(isGet ? { ...out, shot: out.shot ? "(omitted)" : null } : out);
     if (!out.ok) return reply({ error: out.status ? `The site answered with error ${out.status}, so there was nothing to check.` : "The site didn't load.", status: out.status }, 422);
     if (isGet) {
       // compact summary (no screenshots) for quick checks and monitoring
@@ -43,5 +45,5 @@ export default async (req) => {
 export const config = {
   path: "/api/render",
   method: ["POST", "GET"],
-  rateLimit: { action: "rate_limit", windowLimit: 6, windowSize: 60, aggregateBy: ["ip", "domain"] }
+  rateLimit: { action: "rate_limit", windowLimit: 12, windowSize: 60, aggregateBy: ["ip", "domain"] }
 };

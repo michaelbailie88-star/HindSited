@@ -57,6 +57,7 @@ async function run(url) {
   step("render", "active"); step("speed", "active");
   const speedP = Promise.all([post("/speed", { url, strategy: "mobile" }), post("/speed", { url, strategy: "desktop" })]);
 
+  const desktopP = post("/render", { url, mode: "desktop" });
   const render = await post("/render", { url });
   if (!render || render.error) { showError(render ? render.error : "Unknown error"); return; }
   step("render", "done");
@@ -119,7 +120,9 @@ async function run(url) {
   }
   step("links", "done", `Followed ${linkResults.length} links and images`);
 
-  // ---- speed
+  // ---- desktop view + speed
+  const desk = await desktopP;
+  if (desk && !desk.error) { render.desktopFold = desk.desktopFold; render.shots.desktop = desk.shot; }
   const [mobile, desktop] = await speedP;
   const speedOk = (mobile && !mobile.error) || (desktop && !desktop.error);
   step("speed", speedOk ? "done" : "skipped", speedOk ? "Done" : "Google's speed test didn't respond this time");

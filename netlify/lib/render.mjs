@@ -7,7 +7,8 @@ import net from "node:net";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.now() } = {}) {
+export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.now(), mode = "mobile" } = {}) {
+  if (mode === "desktop") return desktopPass(browser, url, budgetMs);
   const t0 = Date.now();
   const left = () => budgetMs - (Date.now() - t0);
   const page = await browser.newPage();
@@ -41,11 +42,14 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
 
     let resp;
     try {
-      resp = await page.goto(url, { waitUntil: "networkidle2", timeout: Math.min(25000, left() - 15000) });
+      resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: Math.min(20000, left() - 20000) });
     } catch (e) {
       if (/timeout/i.test(e.message)) { notes.push("slow-load"); resp = null; }
       else throw e;
     }
+    // give the page a fair chance to finish, without waiting forever on trackers
+    await page.waitForFunction(() => document.readyState === "complete", { timeout: Math.min(8000, Math.max(1000, left() - 25000)) }).catch(() => notes.push("load-incomplete"));
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: 2500 }).catch(() => {});
     const mainStatus = resp ? resp.status() : 0;
     const hdrs = resp ? resp.headers() : {};
     if (mainStatus >= 400) {
@@ -110,26 +114,46 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     }
     page.off("framenavigated", onNav);
 
-    // desktop pass: first-screen call to action + screenshot
-    let desktopFold = null, desktopShot = null;
-    if (left() > 14000) {
-      try {
-        await page.setUserAgent(UA_DESKTOP);
-        await page.setViewport({ width: 1366, height: 800, isMobile: false, hasTouch: false, deviceScaleFactor: 1 });
-        if (navigated) await page.goto(url, { waitUntil: "networkidle2", timeout: Math.min(15000, left() - 6000) }).catch(() => {});
-        await sleep(900);
-        await page.evaluate(() => window.scrollTo(0, 0));
-        desktopFold = await page.evaluate(foldCta, { w: 1366, h: 800 });
-        const buf = await page.screenshot({ type: "jpeg", quality: 60 });
-        desktopShot = { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 1366, h: 800 };
-      } catch { notes.push("desktop-failed"); }
-    }
-
     return {
       ok: true, status: mainStatus, finalUrl: audit.url, https: audit.url.startsWith("https:"),
-      xRobots: hdrs["x-robots-tag"] || "", audit, mobileFold, desktopFold, deadLinks, net404: [...new Set(net404)].slice(0, 20),
-      shots: { mobile: mobileShot, desktop: desktopShot }, ms: Date.now() - t0, notes
+      xRobots: hdrs["x-robots-tag"] || "", audit, mobileFold, desktopFold: null, deadLinks, net404: [...new Set(net404)].slice(0, 20),
+      shots: { mobile: mobileShot, desktop: null }, ms: Date.now() - t0, notes
     };
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+// Desktop pass: what a computer shows in the first screen.
+async function desktopPass(browser, url, budgetMs) {
+  const t0 = Date.now();
+  const left = () => budgetMs - (Date.now() - t0);
+  const page = await browser.newPage();
+  try {
+    await page.setUserAgent(UA_DESKTOP);
+    await page.setViewport({ width: 1366, height: 800, deviceScaleFactor: 1 });
+    await page.setRequestInterception(true);
+    page.on("request", async (req) => {
+      try {
+        const u = new URL(req.url());
+        if (u.protocol === "data:" || u.protocol === "blob:") return req.continue();
+        if (!/^https?:$/.test(u.protocol)) return req.abort();
+        const h = u.hostname.replace(/^\[|\]$/g, "");
+        if (process.env.HS_ALLOW_LOCAL !== "1") {
+          if (/^localhost$/i.test(h) || (net.isIP(h) && isPrivateIp(h))) return req.abort();
+          if (req.isNavigationRequest() && req.frame() === page.mainFrame()) await assertPublicHost(h);
+        }
+        if (["media", "websocket", "eventsource"].includes(req.resourceType())) return req.abort();
+        return req.continue();
+      } catch { try { req.abort(); } catch {} }
+    });
+    const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: Math.min(20000, left() - 15000) }).catch(() => null);
+    await page.waitForFunction(() => document.readyState === "complete", { timeout: Math.min(8000, Math.max(1000, left() - 12000)) }).catch(() => {});
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: 2000 }).catch(() => {});
+    await sleep(500);
+    const desktopFold = await page.evaluate(foldCta, { w: 1366, h: 800 });
+    const buf = await page.screenshot({ type: "jpeg", quality: 60 });
+    return { ok: true, status: resp ? resp.status() : 0, desktopFold, shot: { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 1366, h: 800 }, ms: Date.now() - t0 };
   } finally {
     await page.close().catch(() => {});
   }
