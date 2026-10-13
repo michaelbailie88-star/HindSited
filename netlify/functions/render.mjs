@@ -19,7 +19,8 @@ export default async (req) => {
   let browser;
   try {
     browser = await launchBrowser();
-    const out = await renderAudit(browser, url.href, { budgetMs: 50000, mode });
+    // the function itself has 60s; browser start-up takes up to ~8s of that
+    const out = await renderAudit(browser, url.href, { budgetMs: 44000, mode });
     if (mode === "desktop") return reply(isGet ? { ...out, shot: out.shot ? "(omitted)" : null } : out);
     if (!out.ok) return reply({ error: out.status ? `The site answered with error ${out.status}, so there was nothing to check.` : "The site didn't load.", status: out.status }, 422);
     if (isGet) {
