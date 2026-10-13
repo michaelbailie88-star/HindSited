@@ -6,9 +6,16 @@ import { assertPublicHost, isPrivateIp, UA, UA_DESKTOP } from "./guard.mjs";
 import net from "node:net";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Every step against the page gets a deadline, so a busy or broken page can
+// never stall the whole scan.
+function T(p, ms, label) {
+  let t;
+  return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error("timeout:" + label)), ms); })]).finally(() => clearTimeout(t));
+}
 
-export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.now(), mode = "mobile" } = {}) {
+export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.now(), mode = "mobile", onStage = () => {} } = {}) {
   if (mode === "desktop") return desktopPass(browser, url, budgetMs);
+  const stage = (s) => { try { onStage(s); } catch {} };
   const t0 = Date.now();
   const left = () => budgetMs - (Date.now() - t0);
   const page = await browser.newPage();
@@ -57,24 +64,27 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     }
 
     // scroll to trigger lazy content, then back to top
-    await page.evaluate(async (limitMs) => {
+    stage("loaded");
+    await T(page.evaluate(async (limitMs) => {
       const s = Date.now();
       let y = 0;
       const max = Math.min(document.documentElement.scrollHeight, 16000);
       while (y < max && Date.now() - s < limitMs) { y += 700; window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); }
       window.scrollTo(0, 0);
-    }, Math.min(5000, Math.max(1000, left() - 30000)));
+    }, Math.min(5000, Math.max(1000, left() - 30000))), 9000, "scroll").catch(() => notes.push("scroll-timeout"));
+    stage("scrolled");
     await sleep(700);
 
-    await page.evaluate(`window.__hsTR = (${makeTextRules.toString()})()`);
-    const audit = await page.evaluate(pageAudit, { now, mobile: true, deviceWidth: 390 });
-    const mobileFold = await page.evaluate(foldCta, { w: 390, h: 844 });
+    await T(page.evaluate(`window.__hsTR = (${makeTextRules.toString()})()`), 8000, "rules");
+    const audit = await T(page.evaluate(pageAudit, { now, mobile: true, deviceWidth: 390 }), Math.max(8000, Math.min(20000, left() - 12000)), "audit");
+    stage("audited");
+    const mobileFold = await T(page.evaluate(foldCta, { w: 390, h: 844 }), 6000, "fold").catch(() => ({ count: -1, first: [] }));
 
     // full-page mobile screenshot (capped) for pinpointing findings
     const shotH = Math.min(audit.docH, 9000);
     let mobileShot = null;
     try {
-      const buf = await page.screenshot({ type: "jpeg", quality: 55, clip: { x: 0, y: 0, width: 390, height: shotH }, captureBeyondViewport: true });
+      const buf = await T(page.screenshot({ type: "jpeg", quality: 55, clip: { x: 0, y: 0, width: 390, height: shotH }, captureBeyondViewport: true }), Math.max(4000, Math.min(12000, left() - 10000)), "screenshot");
       mobileShot = { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 390, h: shotH };
     } catch (e) { notes.push("shot-failed"); }
 
@@ -88,7 +98,7 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
       if (left() < 22000 || navigated) break;
       let r;
       try {
-        r = await page.evaluate(async (id) => {
+        r = await T(page.evaluate(async (id) => {
           const el = document.querySelector('[data-hs-hash="' + id + '"]');
           if (!el) return { gone: true };
           el.scrollIntoView({ block: "center" });
@@ -108,11 +118,12 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
           await new Promise((s) => setTimeout(s, 700));
           obs.disconnect(); window.open = oo;
           return { effects, opened, nav: location.href.replace(/#.*$/, "") !== before };
-        }, c.id);
-      } catch { navigated = true; break; }
+        }, c.id), 5000, "click");
+      } catch (e) { if (/^timeout:/.test(e.message)) { notes.push("click-timeout"); break; } navigated = true; break; }
       if (r && !r.gone && !r.effects && !r.opened && !r.nav && !navigated) deadLinks.push(c);
     }
     page.off("framenavigated", onNav);
+    stage("clicked");
 
     return {
       ok: true, status: mainStatus, finalUrl: audit.url, https: audit.url.startsWith("https:"),
@@ -151,8 +162,8 @@ async function desktopPass(browser, url, budgetMs) {
     await page.waitForFunction(() => document.readyState === "complete", { timeout: Math.min(8000, Math.max(1000, left() - 12000)) }).catch(() => {});
     await page.waitForNetworkIdle({ idleTime: 500, timeout: 2000 }).catch(() => {});
     await sleep(500);
-    const desktopFold = await page.evaluate(foldCta, { w: 1366, h: 800 });
-    const buf = await page.screenshot({ type: "jpeg", quality: 60 });
+    const desktopFold = await T(page.evaluate(foldCta, { w: 1366, h: 800 }), 6000, "fold").catch(() => null);
+    const buf = await T(page.screenshot({ type: "jpeg", quality: 60 }), 10000, "screenshot");
     return { ok: true, status: resp ? resp.status() : 0, desktopFold, shot: { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 1366, h: 800 }, ms: Date.now() - t0 };
   } finally {
     await page.close().catch(() => {});

@@ -16,8 +16,12 @@ export default async (req) => {
     const u = normalizeUrl(q.get("url"));
     await assertPublicHost(u.hostname);
     await save({ state: "running", url: u.href });
+    const stages = [];
+    const started = Date.now();
+    const log = (st) => { stages.push(st + "@" + Math.round((Date.now() - started) / 1000) + "s"); save({ state: "running", url: u.href, stages }).catch(() => {}); };
     browser = await launchBrowser();
-    const out = await fullScan(browser, u.href, { psiKey: Netlify.env.get("PSI_KEY") });
+    log("browser");
+    const out = await fullScan(browser, u.href, { psiKey: Netlify.env.get("PSI_KEY"), log });
     if (out.error) return await save({ state: "error", url: u.href, error: out.render });
     const r = buildReport(out.scan);
     const sp = out.scan.speed;

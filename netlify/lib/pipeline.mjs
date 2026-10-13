@@ -8,13 +8,14 @@ import { pageSpeed } from "./speed.mjs";
 const SKIP_PATH = /\/(cart|checkout|account|login|log-in|signin|sign-in|register|wp-admin|wp-login|search|cdn-cgi|feed|tag|tags|author|wp-json|xmlrpc|cgi-bin)(\/|$)|\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?|mp4|mp3|mov)$/i;
 
 export async function fullScan(browser, url, { psiKey, log = () => {} } = {}) {
+  log("start");
   const t = {}; const t0 = Date.now();
   const speedP = Promise.all([pageSpeed(url, "mobile", psiKey), pageSpeed(url, "desktop", psiKey)]);
   const [render, desk] = await Promise.all([
-    renderAudit(browser, url, { budgetMs: 55000 }),
+    renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) }),
     renderAudit(browser, url, { budgetMs: 55000, mode: "desktop" }).catch((e) => ({ ok: false, error: String(e.message) }))
   ]);
-  t.render = Date.now() - t0;
+  t.render = Date.now() - t0; log("rendered");
   if (!render.ok) return { error: "render", render };
   if (desk && desk.ok) { render.desktopFold = desk.desktopFold; render.shots.desktop = desk.shot; }
   const home = new URL(render.finalUrl);
@@ -32,7 +33,7 @@ export async function fullScan(browser, url, { psiKey, log = () => {} } = {}) {
   const pages = [];
   for (let i = 0; i < cand.length; i += 8) pages.push(...(await Promise.all(cand.slice(i, i + 8).map((u) => checkPage(u)))));
   const site = await checkSite(home.origin);
-  t.pages = Date.now() - t0;
+  t.pages = Date.now() - t0; log("pages");
   const map = new Map();
   const add = (u, meta) => { const k = u.replace(/#.*$/, ""); if (!map.has(k) && !seen.has(k.replace(/\/$/, "")) && k.replace(/\/$/, "") !== homeKey) map.set(k, { url: k, ...meta }); };
   for (const l of render.audit.links) add(l.url, { internal: l.internal, text: l.text, from: render.finalUrl, kind: "page" });
@@ -44,7 +45,7 @@ export async function fullScan(browser, url, { psiKey, log = () => {} } = {}) {
   const res = await checkLinks(queue, 12);
   const links = queue.map((x, i) => ({ ...x, ...res[i] }));
   for (const p of pages) if (p.status === 404 || p.status === 410 || p.status >= 500) links.push({ url: p.url, broken: true, reason: String(p.status), kind: "page", internal: true, from: render.finalUrl });
-  t.links = Date.now() - t0;
+  t.links = Date.now() - t0; log("links");
   const [mobile, desktop] = await speedP;
   t.speed = Date.now() - t0;
   return { scan: { render, pages, site, links, linksChecked: true, speed: { mobile, desktop } }, timings: t };
