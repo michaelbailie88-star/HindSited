@@ -15,6 +15,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function capture(page, { width, height, screenH, quality, deadline }) {
   const cdp = await page.createCDPSession();
   const tiles = [];
+  let why = "";
   try {
     await cdp.send("Animation.enable").catch(() => {});
     await cdp.send("Animation.setPlaybackRate", { playbackRate: 0 }).catch(() => {});
@@ -26,18 +27,18 @@ async function capture(page, { width, height, screenH, quality, deadline }) {
     for (let y = 0; y < height; y += screenH) {
       if (Date.now() > deadline - 2500) break;
       const h = Math.min(screenH, height - y);
-      const sy = await T(page.evaluate((top) => { window.scrollTo(0, top); return window.scrollY; }, y), 3000, "scroll").catch(() => null);
+      const sy = await T(page.evaluate((top) => { window.scrollTo(0, top); return window.scrollY; }, y), 3000, "scroll").catch((e) => { why = "scroll: " + e.message; return null; });
       if (sy == null) break;
       await sleep(180);
       await cdp.send("Emulation.setScriptExecutionDisabled", { value: true }).catch(() => {});
       try {
         const { data } = await T(cdp.send("Page.captureScreenshot", { format: "jpeg", quality, clip: { x: 0, y: sy, width, height: h, scale: 1 } }), Math.min(6000, Math.max(1500, deadline - Date.now() - 1000)), "capture");
         tiles.push({ y: sy, h, data: "data:image/jpeg;base64," + data });
-      } catch { break; }
+      } catch (e) { why = "capture@" + y + ": " + String(e.message).slice(0, 120); break; }
       finally { await cdp.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {}); }
       if (sy < y) break; // page ended before the expected height
     }
-    if (!tiles.length) throw new Error("no-capture");
+    if (!tiles.length) throw new Error("no-capture " + why);
     const last = tiles[tiles.length - 1];
     return { tiles, h: last.y + last.h, data: tiles[0].data };
   } finally {
@@ -139,7 +140,7 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
       const capMs = Math.max(6000, Math.min(20000, left() - 8000));
       const cap = await T(capture(page, { width: 390, height: shotH, screenH: 844, quality: 55, deadline: Date.now() + capMs }), capMs + 4000, "screenshot");
       mobileShot = { data: cap.data, tiles: cap.tiles, w: 390, h: cap.h };
-    } catch (e) { notes.push("shot-failed: " + String(e.message).slice(0, 80)); }
+    } catch (e) { notes.push("shot-failed: " + String(e.message).slice(0, 200)); }
 
     // try every "#" link: does clicking it actually do anything?
     const deadLinks = [];
