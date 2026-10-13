@@ -36,8 +36,8 @@ a { color: inherit; text-underline-offset: 3px; }
 .eyebrow { font: 700 13px/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--mark); margin: 0 0 14px; }
 
 /* header */
-.top { border-bottom: 1px solid var(--line); background: var(--paper); }
-.top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; flex-wrap: wrap; }
+.top { border-bottom: 1px solid var(--line); background: var(--paper); position: relative; z-index: 30; }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; }
 .brand { font: 800 22px/1 var(--display); font-stretch: 112%; letter-spacing: -.01em; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
 .brand .wm span { color: var(--mark); }
 .brand-mark { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ink); position: relative; flex: none; }
@@ -275,8 +275,7 @@ details.cat[open] > summary::after { content: "\2212"; }
 @media print { .print-only { display: inline; font-weight: 700; } }
 
 /* tool nav */
-.tools-nav { display: flex; gap: 4px; flex-wrap: wrap; order: 3; width: 100%; }
-@media (min-width: 900px) { .tools-nav { order: 0; width: auto; } }
+.tools-nav { display: flex; gap: 4px; }
 .tools-nav a { font: 700 14px/1 var(--body); text-decoration: none; padding: 9px 12px; border-radius: 9px; color: var(--ink-2); }
 .tools-nav a:hover { background: var(--paper-2); }
 .tools-nav a[aria-current="page"] { background: var(--ink); color: #fff; }
@@ -423,3 +422,67 @@ html.embed .skip { display: none; }
 .brand-form input:not([type=color]):not([type=file]), .brand-form select { width: 100%; }
 .brand-form input[type=file] { max-width: 100%; }
 .b-edit, .b-prev { min-width: 0; }
+
+/* ---------------- header menu (hamburger below 900px) ---------------- */
+.tools-nav a { white-space: nowrap; }
+.menu-btn { display: none; }
+@media (min-width: 900px) {
+  .menu { display: contents; }
+  .top-right { flex-wrap: nowrap; min-width: 0; }
+  .account { flex-wrap: nowrap; min-width: 0; }
+  .by { white-space: nowrap; }
+}
+@media (min-width: 900px) and (max-width: 1159px) { .top-right .by { display: none; } }
+@media (max-width: 899px) {
+  .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; margin-right: -10px; padding: 0; background: none; border: 0; border-radius: 10px; color: var(--ink); cursor: pointer; flex: none; }
+  .menu-btn:hover { background: var(--paper-2); }
+  .bars { position: relative; display: block; width: 22px; height: 16px; }
+  .bars i { position: absolute; left: 0; width: 22px; height: 2.5px; border-radius: 2px; background: currentColor; transition: transform .2s, opacity .2s, top .2s; }
+  .bars i:nth-child(1) { top: 0; } .bars i:nth-child(2) { top: 6.75px; } .bars i:nth-child(3) { top: 13.5px; }
+  .menu-btn[aria-expanded="true"] .bars i:nth-child(1) { top: 6.75px; transform: rotate(45deg); }
+  .menu-btn[aria-expanded="true"] .bars i:nth-child(2) { opacity: 0; }
+  .menu-btn[aria-expanded="true"] .bars i:nth-child(3) { top: 6.75px; transform: rotate(-45deg); }
+  .menu { display: none; position: absolute; left: 0; right: 0; top: 100%; background: var(--paper); border-bottom: 1px solid var(--line); box-shadow: 0 22px 30px -20px rgba(20,22,27,.4); padding: 8px 16px 22px; max-height: calc(100vh - 63px); max-height: calc(100dvh - 63px); overflow-y: auto; }
+  .menu.open { display: block; }
+  .menu .tools-nav { flex-direction: column; gap: 2px; }
+  .menu .tools-nav a { font-size: 17px; padding: 15px 12px; border-radius: 10px; }
+  .menu .top-right { display: block; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+  .menu .account { flex-direction: column; align-items: stretch; gap: 2px; }
+  .menu .acct-email { max-width: none; padding: 8px 12px 2px; font-size: 14px; color: var(--muted); }
+  .menu .account .linkish { display: block; width: 100%; text-align: left; padding: 14px 12px; font-size: 17px; font-weight: 700; text-decoration: none; border-radius: 10px; }
+  .menu .account .linkish:hover { background: var(--paper-2); color: var(--ink); }
+  .menu .acct-signin { display: block; text-align: center; padding: 15px; font-size: 17px; border-radius: 12px; margin: 6px 0 2px; }
+  .menu .by { display: block; padding: 16px 12px 0; font-size: 14px; }
+}
+@media (min-width: 720px) and (max-width: 899px) { .menu { padding: 8px 32px 24px; } }
+
+/* ---------------- phone layout fixes ---------------- */
+input, select, textarea { max-width: 100%; }
+input[type=file] { width: 100%; font-size: 15px; }
+.hero-in, .rep-head, .builder, .card-panel, .plans, .kit-sec { min-width: 0; }
+.hero-in > *, .rep-head > *, .plans > *, .calc-lead > *, .rp-private form > * { min-width: 0; }
+.calc-lead input, .calc-lead textarea, .rp-private input, .rp-private textarea { width: 100%; }
+@media (max-width: 959px) { .hero-in { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 899px) {
+  .rep-head { grid-template-columns: minmax(0, 1fr); }
+  .devices { width: 100%; }
+  .dev-phone { width: min(118px, 27vw); flex: none; }
+  .dev-desk { width: auto; flex: 0 1 300px; min-width: 0; }
+  :not(p):not(li) > button.linkish { padding: 11px 0; }
+}
+@media (max-width: 400px) { .hero h1 { font-size: clamp(34px, 10.6vw, 40px); } }
+@media (max-width: 559px) {
+  .qe-top { flex-wrap: wrap; }
+  .qe-label { flex: 1 1 100%; order: -1; }
+  .qe-type { margin-right: auto; }
+  .oe, .oe:not(:has(input[data-o="mult"])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px; }
+  .oe > input[data-o="label"] { grid-column: 1 / -1; }
+  .oe:not(:has(input[data-o="mult"])) > .icon { grid-column: 3; }
+  .opt-ed { gap: 12px; }
+  .oe { padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+  .oe:last-child { border-bottom: 0; padding-bottom: 0; }
+}
+.panel-h, .rep-title h2, .calc-h, .rp-h, .kit-h, h2 { overflow-wrap: anywhere; }
+.acct-email { min-width: 0; flex: 0 1 auto; }
+@media (min-width: 900px) and (max-width: 1159px) { .top-right .acct-email { display: none; } }
+.account .linkish, .acct-signin { white-space: nowrap; }

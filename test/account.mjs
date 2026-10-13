@@ -75,6 +75,7 @@ ok(new URL(p.url()).host === "127.0.0.1:8100", "a //other-site return address is
 await p.setViewport({ width: 375, height: 800 }); await p.goto(BASE + "/"); await p.waitForSelector("#account");
 ok(await p.evaluate(() => document.documentElement.scrollWidth <= 375), "header fits on a phone (no sideways scroll)");
 await p.screenshot({ path: out("acct-phone-signedin.png") });
+await p.click(".menu-btn"); await new Promise((r) => setTimeout(r, 150));
 await p.click("#signOut"); await p.waitForSelector("#account .acct-signin");
 ok(await p.evaluate(() => document.documentElement.scrollWidth <= 375), "signed-out header fits on a phone");
 await p.screenshot({ path: out("acct-phone-signedout.png") });
