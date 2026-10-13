@@ -3,14 +3,24 @@ import { buildReport, CATEGORIES } from "./rules.js";
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const API = window.HS_API || "/api";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const form = $("#scanForm"), input = $("#url"), go = $("#go"), errEl = $("#formErr");
+let me = { signedIn: false };
 
 function cleanInput(v) {
   v = v.trim();
   if (!v) return null;
   if (!/^https?:\/\//i.test(v)) v = "https://" + v;
   try { const u = new URL(v); if (!/\./.test(u.hostname)) return null; return u.href; } catch { return null; }
+}
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, { cache: "no-store", credentials: "same-origin", ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
+    let data = {}; try { data = await r.json(); } catch {}
+    if (r.status === 429) data.error = data.error || "You're going a little fast. Wait a minute and try again.";
+    return { status: r.status, data };
+  } catch { return { status: 0, data: { error: "Couldn't reach HindSited. Check your connection." } }; }
 }
 
 function step(name, state, note) {
@@ -21,42 +31,142 @@ function step(name, state, note) {
   if (note) { const s = li.querySelector("small"); if (s) s.textContent = note; }
 }
 
+// ---------------------------------------------------------------- views
+function view(name) {
+  for (const id of ["hero", "checks", "progress", "report", "panel"]) { const el = $("#" + id); if (el) el.hidden = true; }
+  if (name === "home") { $("#hero").hidden = false; $("#checks").hidden = false; }
+  else $("#" + name).hidden = false;
+  window.scrollTo({ top: 0 });
+}
+function panel(html) { const p = $("#panel"); p.innerHTML = `<div class="wrap narrow">${html}</div>`; view("panel"); return p; }
+
+function renderAccount() {
+  const a = $("#account");
+  if (!a) return;
+  if (!me.signedIn) { a.innerHTML = ""; return; }
+  a.innerHTML = `<span class="acct-email">${esc(me.email)}</span><button type="button" class="linkish" id="myReports">My reports</button><button type="button" class="linkish" id="signOut">Sign out</button>`;
+  $("#signOut").onclick = async () => { await api("/me", { method: "POST" }); me = { signedIn: false }; renderAccount(); goHome(); };
+  $("#myReports").onclick = showMyReports;
+}
+
+function goHome() { history.pushState({}, "", "/"); view("home"); go.disabled = false; input.focus(); }
+
+// ---------------------------------------------------------------- start
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   errEl.hidden = true;
   const url = cleanInput(input.value);
   if (!url) { errEl.textContent = "Enter your website address, like yourbusiness.com."; errEl.hidden = false; input.focus(); return; }
-  run(url);
+  startScan(url);
 });
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// The scan runs on the server in the background (it can take a minute or two
-// on slow sites); this page starts it and follows its progress.
-async function run(url) {
+async function startScan(url) {
   go.disabled = true;
-  $("#hero").hidden = true; $("#checks").hidden = true; $("#report").hidden = true;
-  const prog = $("#progress"); prog.hidden = false;
-  $("#progHost").textContent = new URL(url).hostname.replace(/^www\./, "");
+  if (!me.signedIn) { showSignIn(url); go.disabled = false; return; }
+  const { status, data } = await api("/scan", { method: "POST", body: JSON.stringify({ url }) });
+  go.disabled = false;
+  if (status === 401) { me = { signedIn: false }; renderAccount(); showSignIn(url); return; }
+  if (status === 402 && data.paywall) { showPaywall(data, url); return; }
+  if (!data.id) { showError(data.error || "Couldn't start the check. Try again in a minute."); return; }
+  history.pushState({}, "", "/r/" + data.id);
+  followReport(data.id, url);
+}
+
+function showSignIn(url, note) {
+  const host = new URL(url).hostname.replace(/^www\./, "");
+  const p = panel(`<div class="card-panel">
+    <p class="eyebrow">One quick step</p>
+    <h2 class="panel-h">Where should we send your report?</h2>
+    <p>We'll email you a link to sign in. It also means your free check of <b>${esc(host)}</b> is saved to you, so you can come back to it any time.</p>
+    ${note ? `<p class="form-err">${esc(note)}</p>` : ""}
+    <form id="signinForm" class="stack" novalidate>
+      <label class="sr" for="email">Email address</label>
+      <div class="field"><input id="email" type="email" autocomplete="email" placeholder="you@yourbusiness.com" required><button type="submit">Send my link</button></div>
+      <p class="form-err" id="siErr" role="alert" hidden></p>
+    </form>
+    <p class="muted small">No password. No spam. Just the link.</p>
+    <button type="button" class="linkish" id="siBack">\u2190 Check a different site</button>
+  </div>`);
+  $("#siBack").onclick = goHome;
+  $("#email").focus();
+  $("#signinForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $("#email").value.trim();
+    const btn = p.querySelector("button[type=submit]");
+    btn.disabled = true;
+    const { status, data } = await api("/auth/start", { method: "POST", body: JSON.stringify({ email, next: "/?scan=" + encodeURIComponent(url) }) });
+    btn.disabled = false;
+    if (status !== 200 || !data.sent) { const er = $("#siErr"); er.textContent = data.error || "Something went wrong. Try again."; er.hidden = false; return; }
+    panel(`<div class="card-panel"><p class="eyebrow">Check your inbox</p><h2 class="panel-h">We sent a link to ${esc(email)}</h2>
+      <p>Tap it to sign in. Your check of <b>${esc(host)}</b> starts as soon as you do.</p>
+      <p class="muted small">It can take a minute to arrive. Check your spam or promotions folder too. The link works once and expires in 20 minutes.</p>
+      <button type="button" class="linkish" id="siBack2">\u2190 Use a different email</button></div>`);
+    $("#siBack2").onclick = () => showSignIn(url);
+  };
+}
+
+const PRICES = {
+  solo: { name: "Solo", for: "One business", month: 19, once: 299, perks: ["All three tools", "30 website checks a month", "Review Booster kit and Quote Calculator"] },
+  agency: { name: "Agency", for: "Up to 10 businesses", month: 79, once: 999, perks: ["Everything in Solo, for 10 businesses", "300 website checks a month", "Reports and PDFs with your own logo", "Add more businesses for $6/month each"] }
+};
+function showPaywall(d, url) {
+  const host = url ? new URL(url).hostname.replace(/^www\./, "") : "";
+  const why = {
+    "free-used": `You've already used your free check${d.site ? " (on <b>" + esc(d.site) + "</b>)" : ""}.`,
+    "site-used": `<b>${esc(d.site || host)}</b> has already had its free check.`,
+    "business-limit": `Your plan covers ${d.allowed} business${d.allowed === 1 ? "" : "es"} and they're all in use.`,
+    "scan-limit": `You've used all ${d.allowed} checks included this month.`
+  }[d.reason] || "You've reached the limit of your free check.";
+  const card = (k) => { const p = PRICES[k]; return `<div class="plan${k === "solo" ? " plan-main" : ""}"><h3>${p.name}</h3><p class="muted">${p.for}</p>
+    <p class="price"><b>$${p.month}</b>/month</p><p class="muted small">or $${p.once} once for lifetime access</p>
+    <ul>${p.perks.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+    <button class="btn" data-plan="${k}" data-int="month">Start ${p.name} monthly</button>
+    <button class="btn ghost" data-plan="${k}" data-int="once">Pay once, $${p.once}</button></div>`; };
+  const p = panel(`<div class="card-panel wide">
+    <p class="eyebrow">Keep going</p><h2 class="panel-h">${why}</h2>
+    <p>Check your site every time you change it, and get the Review Booster and Quote Calculator too.</p>
+    ${d.report ? `<p><a href="/r/${esc(d.report)}" class="linkish">See your free report again \u2192</a></p>` : ""}
+    <div class="plans">${card("solo")}${card("agency")}</div>
+    <p class="muted small">Prices in USD. Cancel monthly plans any time.</p>
+    <p class="form-err" id="payErr" role="alert" hidden></p>
+    <button type="button" class="linkish" id="pwBack">\u2190 Back</button></div>`);
+  $("#pwBack").onclick = goHome;
+  p.querySelectorAll("[data-plan]").forEach((b) => (b.onclick = () => checkout(b.dataset.plan, b.dataset.int)));
+}
+async function checkout(plan, interval) {
+  const { data } = await api("/checkout", { method: "POST", body: JSON.stringify({ plan, interval }) });
+  if (data.url) { location.href = data.url; return; }
+  const er = $("#payErr"); if (er) { er.textContent = data.error || "Checkout isn't available yet."; er.hidden = false; }
+}
+
+async function showMyReports() {
+  const { data } = await api("/me");
+  me = data; renderAccount();
+  const rows = (data.reports || []).map((r) => `<li><a href="/r/${esc(r.id)}">${esc(r.site || r.url)}</a><span class="muted small">${esc(new Date(r.at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }))}</span></li>`).join("");
+  history.pushState({}, "", "/account");
+  panel(`<div class="card-panel wide"><p class="eyebrow">Your account</p><h2 class="panel-h">${esc(data.email || "")}</h2>
+    <p>Plan: <b>${esc(data.planLabel || "Free")}</b>${data.scansAllowed ? ` \u00b7 ${data.scansUsed} of ${data.scansAllowed} checks used this month` : ""}${data.businessesAllowed && data.plan !== "free" ? ` \u00b7 ${data.businesses.length} of ${data.businessesAllowed} businesses` : ""}</p>
+    <h3 class="sub-h">Your reports</h3>${rows ? `<ul class="report-list">${rows}</ul>` : `<p class="muted">No reports yet.</p>`}
+    <button type="button" class="linkish" id="acBack">\u2190 Check a site</button></div>`);
+  $("#acBack").onclick = goHome;
+}
+
+// ---------------------------------------------------------------- progress
+async function followReport(id, url) {
+  view("progress");
+  $("#progHost").textContent = url ? new URL(url).hostname.replace(/^www\./, "") : "your site";
   ["render", "click", "pages", "links", "speed"].forEach((s) => step(s, null));
-  window.scrollTo({ top: 0 });
   step("render", "active");
-
-  const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-z0-9-]/gi, "");
-  try {
-    const r = await fetch(API + "/check-bg?id=" + encodeURIComponent(id) + "&url=" + encodeURIComponent(url));
-    if (r.status === 429) { showError("You're checking sites a little fast. Wait a minute and try again."); return; }
-    if (!r.ok && r.status !== 202) { showError("Couldn't start the check (" + r.status + "). Try again in a minute."); return; }
-  } catch { showError("Couldn't reach the checker. Check your connection."); return; }
-
   const deadline = Date.now() + 6 * 60 * 1000;
-  let data = null, misses = 0, lastCount = -1, lastChange = Date.now();
+  let data = null, misses = 0, lastCount = -1, lastChange = Date.now(), first = true;
   while (Date.now() < deadline) {
-    await sleep(2500);
-    try {
-      const r = await fetch(API + "/check?id=" + encodeURIComponent(id), { cache: "no-store" });
-      data = await r.json();
-    } catch { if (++misses > 8) { showError("Lost touch with the checker. Check your connection and try again."); return; } continue; }
+    if (!first) await sleep(2500);
+    first = false;
+    const r = await api("/report?id=" + encodeURIComponent(id));
+    if (r.status === 404) { showError("We couldn't find that report. It may have been mistyped."); return; }
+    if (r.status !== 200) { if (++misses > 8) { showError("Lost touch with HindSited. Check your connection and try again."); return; } continue; }
+    data = r.data;
+    if (!url && data.url) $("#progHost").textContent = new URL(data.url).hostname.replace(/^www\./, "");
     if (data.state === "error") { showError(data.error || "Something went wrong checking the site."); return; }
     if (data.state === "done" && data.scan) break;
     const n = (data.stages || []).length;
@@ -66,14 +176,9 @@ async function run(url) {
     showStages(data.stages || []);
   }
   if (!data || data.state !== "done" || !data.scan) { showError("The check took too long. The site may be very slow. Try again in a few minutes."); return; }
-
   const scan = data.scan;
-  ["render", "click", "pages", "links"].forEach((s) => step(s, "done"));
-  const speedOk = (scan.speed.mobile && !scan.speed.mobile.error) || (scan.speed.desktop && !scan.speed.desktop.error);
-  step("speed", speedOk ? "done" : "skipped", speedOk ? "Done" : "Google's speed test didn't respond this time");
   const report = buildReport(scan);
-  await showReport(report, scan);
-  go.disabled = false;
+  await showReport(report, scan, { id, mine: data.mine, createdAt: data.createdAt || data.at });
 }
 
 function showStages(stages) {
@@ -86,19 +191,30 @@ function showStages(stages) {
 }
 
 function showError(msg) {
-  $("#progress").hidden = true;
-  const rep = $("#report");
-  rep.hidden = false;
-  rep.innerHTML = `<div class="wrap narrow"><div class="err-box"><h3>We couldn't check that site</h3><p>${esc(msg)}</p><button class="btn" id="tryAgain">Try another address</button></div></div>`;
-  $("#tryAgain").onclick = reset;
+  panel(`<div class="err-box"><h3>We couldn't check that site</h3><p>${esc(msg)}</p><button class="btn" id="tryAgain">Try another address</button></div>`);
+  $("#tryAgain").onclick = goHome;
   go.disabled = false;
 }
 
-function reset() {
-  $("#report").hidden = true; $("#progress").hidden = true;
-  $("#hero").hidden = false; $("#checks").hidden = false;
-  window.scrollTo({ top: 0 }); input.focus();
+// ---------------------------------------------------------------- routing
+async function route() {
+  const path = location.pathname;
+  const m = path.match(/^\/r\/([a-f0-9-]{20,40})\/?$/i);
+  if (m) { followReport(m[1]); return; }
+  if (path === "/account" && me.signedIn) { showMyReports(); return; }
+  const q = new URLSearchParams(location.search);
+  if (q.get("signin") === "expired") { history.replaceState({}, "", "/"); view("home"); errEl.textContent = "That sign-in link has expired or was already used. Enter your site again to get a new one."; errEl.hidden = false; return; }
+  const pending = q.get("scan");
+  if (pending && cleanInput(pending)) { history.replaceState({}, "", "/"); input.value = pending.replace(/^https?:\/\//, ""); startScan(cleanInput(pending)); return; }
+  view("home");
 }
+window.addEventListener("popstate", route);
+(async () => {
+  const r = await api("/me");
+  me = r.data && r.data.signedIn ? r.data : { signedIn: false };
+  renderAccount();
+  route();
+})();
 
 // ---------------------------------------------------------------- report
 let shotImg = null;
@@ -163,7 +279,7 @@ function serpBlock(report, scan) {
   return `<p class="serp-cap">Roughly how Google shows you now</p><div class="serp"><div class="s-url">${esc(host)}</div><div class="s-title">${esc(a.title || host)}</div><div class="s-desc ${a.desc ? "" : "missing"}">${esc(a.desc || "No description: Google picks some text from your page instead.")}</div></div>`;
 }
 
-async function showReport(report, scan) {
+async function showReport(report, scan, meta = {}) {
   shotImg = await phoneImage(scan.render.shots && scan.render.shots.mobile);
   const host = new URL(scan.render.finalUrl).hostname.replace(/^www\./, "");
   const nowN = report.findings.filter((f) => f.severity === "Fix now").length;
@@ -174,6 +290,7 @@ async function showReport(report, scan) {
   const ms = scan.render.shots && scan.render.shots.mobile, ds = scan.render.shots && scan.render.shots.desktop;
 
   let html = `<div class="wrap">
+  <div class="rep-tools no-print"><button type="button" class="tool" id="copyLink">Copy share link</button><button type="button" class="tool" id="savePdf">Download PDF</button><span class="tool-note" id="toolNote" role="status"></span></div>
   <div class="rep-head">
     <div class="dial" role="img" aria-label="Score ${report.score} out of 100">
       <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke="#e1dccf" stroke-width="12"/><circle cx="80" cy="80" r="70" fill="none" stroke="${dialColor}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - report.score / 100)}"/></svg>
@@ -184,7 +301,7 @@ async function showReport(report, scan) {
       <h2>${esc(host)}: ${esc(report.grade.label)}</h2>
       <p>${esc(report.grade.note)}</p>
       <div class="tally">${nowN ? `<span class="chip now">${nowN} fix now</span>` : ""}${soonN ? `<span class="chip soon">${soonN} fix soon</span>` : ""}${worthN ? `<span class="chip">${worthN} worth fixing</span>` : ""}<span class="chip ok">${report.passed.length} checks passed</span></div>
-      <p class="rep-meta">${report.pagesChecked} page${report.pagesChecked === 1 ? "" : "s"} read · ${report.linksChecked} links and images followed${report.platform ? " · built with " + esc(report.platform) : ""} · ${new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
+      <p class="rep-meta">${report.pagesChecked} page${report.pagesChecked === 1 ? "" : "s"} read · ${report.linksChecked} links and images followed${report.platform ? " · built with " + esc(report.platform) : ""} · ${new Date(meta.createdAt || Date.now()).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
     </div>
     <div class="devices" aria-hidden="true">${ms ? `<div class="dev-phone"><img src="${ms.data}" alt=""></div>` : ""}${ds ? `<div class="dev-desk"><img src="${ds.data}" alt=""></div>` : ""}</div>
   </div>`;
@@ -223,17 +340,22 @@ async function showReport(report, scan) {
   html += `<div class="rep-sec"><h3>Pages we read</h3><ol class="pages-list"><li>${esc(pagePath(scan.render.finalUrl))}</li>${okPages.map((p) => `<li>${esc(pagePath(p.finalUrl || p.url))}</li>`).join("")}</ol></div>`;
 
   html += `<div class="cta"><div><h3>Want these fixed?</h3><p>The Lazy Creator Company builds fast, hand-coded websites from $500, with every issue in this report handled.</p></div><a class="btn" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>
-  <div class="again"><button id="again">Check another site</button></div></div>`;
+  <div class="again no-print"><button id="again">Check another site</button></div></div>`;
 
   const rep = $("#report");
   rep.innerHTML = html;
 
   const tf = $("#topFixes");
   if (tf) report.top.forEach((f, i) => tf.appendChild(fixCard(f, i + 1, report, scan)));
-  $("#again").onclick = reset;
-  $("#progress").hidden = true;
-  rep.hidden = false;
-  window.scrollTo({ top: 0 });
+  $("#again").onclick = goHome;
+  const link = meta.id ? location.origin + "/r/" + meta.id : location.href;
+  $("#copyLink").onclick = async () => {
+    try { await navigator.clipboard.writeText(link); $("#toolNote").textContent = "Link copied. Anyone with it can view this report."; }
+    catch { $("#toolNote").textContent = link; }
+  };
+  $("#savePdf").onclick = () => { document.title = "HindSited report - " + host; window.print(); };
+  window.onbeforeprint = () => document.querySelectorAll("details.cat").forEach((d) => d.setAttribute("open", ""));
+  view("report");
 }
 
 function fixCard(f, n, report, scan) {

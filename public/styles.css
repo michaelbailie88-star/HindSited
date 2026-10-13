@@ -203,3 +203,57 @@ details.cat[open] > summary::after { content: "\2212"; }
 .foot { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 14.5px; }
 .foot p { margin: 0 0 6px; }
 .foot a { color: var(--ink); }
+
+/* header account */
+.top-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
+.account { display: flex; align-items: center; gap: 12px; font-size: 14px; flex-wrap: wrap; }
+.acct-email { color: var(--ink-2); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linkish { background: none; border: 0; padding: 0; font: 600 14px/1.4 var(--body); color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.linkish:hover { color: var(--mark); }
+.small { font-size: 14px; }
+
+/* panels: sign-in, inbox, paywall, account, errors */
+.panel { padding: 48px 0 80px; }
+.card-panel { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 22px; box-shadow: var(--shadow); }
+@media (min-width: 720px) { .card-panel { padding: 40px 44px; } }
+.card-panel.wide { max-width: none; }
+.panel .narrow { max-width: 860px; }
+.panel-h { font: 850 clamp(26px, 4.4vw, 38px)/1.08 var(--display); font-stretch: 106%; letter-spacing: -.015em; margin: 0 0 12px; }
+.card-panel > p { color: var(--ink-2); }
+.stack { margin: 18px 0 10px; }
+.sub-h { font: 800 20px/1.2 var(--display); margin: 26px 0 10px; }
+.report-list { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; }
+.report-list li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--paper); border-radius: 10px; flex-wrap: wrap; }
+.report-list a { font-weight: 700; overflow-wrap: anywhere; }
+.plans { display: grid; gap: 16px; margin: 22px 0 14px; }
+@media (min-width: 720px) { .plans { grid-template-columns: 1fr 1fr; } }
+.plan { border: 2px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 6px; background: #fff; }
+.plan-main { border-color: var(--ink); }
+.plan h3 { font: 850 24px/1.1 var(--display); margin: 0; }
+.plan p { margin: 0; }
+.price b { font: 850 38px/1 var(--display); }
+.plan ul { margin: 10px 0 14px; padding-left: 18px; color: var(--ink-2); font-size: 15.5px; }
+.plan .btn { width: 100%; margin-top: 6px; }
+.btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
+.btn.ghost:hover { background: var(--ink); color: #fff; }
+
+/* report tools */
+.rep-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
+.tool { background: var(--card); border: 1.5px solid var(--ink); border-radius: 10px; padding: 9px 14px; font: 700 14px/1 var(--body); cursor: pointer; }
+.tool:hover { background: var(--ink); color: #fff; }
+.tool-note { font-size: 14px; color: var(--ok); overflow-wrap: anywhere; }
+
+/* print / save as PDF */
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff; font-size: 12pt; }
+  .top, .foot, .no-print, .hero, .checks, .progress, .panel, .cta .btn, .skip { display: none !important; }
+  .report { padding: 0; }
+  .fix, details.cat, .gauge, .chart-card { box-shadow: none; break-inside: avoid; }
+  details.cat > summary::after { content: ""; }
+  details.cat .cat-body { display: grid !important; }
+  .cta { background: #fff; color: var(--ink); border: 2px solid var(--ink); break-inside: avoid; }
+  .cta p { color: var(--ink-2); }
+  .cta::after { content: "thelazycreatorcompany.com"; font-weight: 700; }
+  a { text-decoration: none; }
+}

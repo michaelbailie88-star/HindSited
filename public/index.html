@@ -7,18 +7,18 @@
 <meta name="description" content="HindSited opens your website like a customer on a real phone, clicks every button, follows every link and reads every word, then shows you exactly what's costing you customers.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#14161b">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
   <div class="wrap top-in">
-    <a class="brand" href="./" aria-label="HindSited home"><span class="brand-mark" aria-hidden="true"></span><span class="wm">Hind<span>Sited</span></span></a>
-    <span class="by">by <a href="https://thelazycreatorcompany.com" rel="noopener">The Lazy Creator Company</a></span>
+    <a class="brand" href="/" aria-label="HindSited home"><span class="brand-mark" aria-hidden="true"></span><span class="wm">Hind<span>Sited</span></span></a>
+    <div class="top-right"><div class="account" id="account"></div><span class="by">by <a href="https://thelazycreatorcompany.com" rel="noopener">The Lazy Creator Company</a></span></div>
   </div>
 </header>
 
@@ -36,7 +36,7 @@
             <input id="url" name="url" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="yourbusiness.com" required>
             <button type="submit" id="go">Check my site</button>
           </div>
-          <p class="form-note" id="formNote">Takes about a minute. Nothing to install.</p>
+          <p class="form-note" id="formNote">One free check. Takes about a minute. Nothing to install.</p>
           <p class="form-err" id="formErr" role="alert" hidden></p>
         </form>
       </div>
@@ -84,6 +84,9 @@
     </div>
   </section>
 
+  <!-- SIGN-IN / PAYWALL / ACCOUNT / ERRORS -->
+  <section class="panel" id="panel" hidden aria-live="polite"></section>
+
   <!-- REPORT -->
   <section class="report" id="report" hidden></section>
 </main>
@@ -94,6 +97,6 @@
     <p class="muted">We only read what's publicly visible on your site. We never fill in or submit your forms.</p>
   </div>
 </footer>
-<script type="module" src="app.js"></script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

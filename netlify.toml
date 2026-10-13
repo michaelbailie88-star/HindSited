@@ -9,6 +9,16 @@
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium-min", "puppeteer-core"]
 
+[[redirects]]
+  from = "/r/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/account"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

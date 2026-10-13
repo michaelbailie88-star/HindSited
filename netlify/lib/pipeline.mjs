@@ -11,9 +11,19 @@ const SKIP_PATH = /\/(cart|checkout|account|login|log-in|signin|sign-in|register
 export async function fullScan(browser, url, { psiKey, log = () => {} } = {}) {
   log("start");
   const t = {}; const t0 = Date.now();
-  const speedP = Promise.all([pageSpeed(url, "mobile", psiKey), pageSpeed(url, "desktop", psiKey)]);
   // one page at a time keeps memory low on small servers
-  const render = await renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) });
+  let render;
+  try {
+    render = await renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) });
+  } catch (e) {
+    // plenty of small-business sites still only work over plain http
+    if (!/^https:/i.test(url) || !/ERR_(SSL|CERT|CONNECTION_REFUSED|CONNECTION_RESET|CONNECTION_CLOSED|EMPTY_RESPONSE|TIMED_OUT)/.test(String(e.message))) throw e;
+    url = url.replace(/^https:/i, "http:");
+    log("retry-http");
+    render = await renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) });
+  }
+  // Google's speed test runs while the other pages and links are checked
+  const speedP = render.ok ? Promise.all([pageSpeed(render.finalUrl || url, "mobile", psiKey), pageSpeed(render.finalUrl || url, "desktop", psiKey)]) : null;
   const desk = render.ok ? await renderAudit(browser, url, { budgetMs: 40000, mode: "desktop" }).catch((e) => ({ ok: false, error: String(e.message) })) : null;
   t.render = Date.now() - t0; log("rendered");
   if (!render.ok) return { error: "render", render };
