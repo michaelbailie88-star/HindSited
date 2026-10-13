@@ -34,6 +34,7 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     await page.setBypassCSP(true);
     await page.setUserAgent(UA);
     await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+    await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]).catch(() => {});
     await page.setRequestInterception(true);
     page.on("request", async (req) => {
       try {
@@ -46,7 +47,8 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
           if (req.isNavigationRequest() && req.frame() === page.mainFrame()) await assertPublicHost(h);
         }
         // skip heavy media we never look at
-        if (["media", "websocket", "eventsource"].includes(req.resourceType())) return req.abort();
+        // web fonts can hang in the serverless browser and stall screenshots; text still shows in a fallback font
+        if (["media", "websocket", "eventsource", "font"].includes(req.resourceType())) return req.abort();
         return req.continue();
       } catch { try { req.abort(); } catch {} }
     });
@@ -99,7 +101,7 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     const mobileFold = await T(page.evaluate(foldCta, { w: 390, h: 844 }), 6000, "fold").catch(() => ({ count: -1, first: [] }));
 
     // full-page mobile screenshot (capped) for pinpointing findings
-    const shotH = Math.min(audit.docH, 9000);
+    const shotH = Math.min(audit.docH, 7000);
     let mobileShot = null;
     try {
       const data = await T(capture(page, { width: 390, height: shotH, quality: 55 }), Math.max(4000, Math.min(12000, left() - 10000)), "screenshot");
@@ -161,6 +163,7 @@ async function desktopPass(browser, url, budgetMs) {
   try {
     await page.setUserAgent(UA_DESKTOP);
     await page.setViewport({ width: 1366, height: 800, deviceScaleFactor: 1 });
+    await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]).catch(() => {});
     await page.setRequestInterception(true);
     page.on("request", async (req) => {
       try {
@@ -172,7 +175,8 @@ async function desktopPass(browser, url, budgetMs) {
           if (/^localhost$/i.test(h) || (net.isIP(h) && isPrivateIp(h))) return req.abort();
           if (req.isNavigationRequest() && req.frame() === page.mainFrame()) await assertPublicHost(h);
         }
-        if (["media", "websocket", "eventsource"].includes(req.resourceType())) return req.abort();
+        // web fonts can hang in the serverless browser and stall screenshots; text still shows in a fallback font
+        if (["media", "websocket", "eventsource", "font"].includes(req.resourceType())) return req.abort();
         return req.continue();
       } catch { try { req.abort(); } catch {} }
     });
