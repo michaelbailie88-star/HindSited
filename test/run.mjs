@@ -9,7 +9,7 @@ import { fullScan } from "../netlify/lib/pipeline.mjs";
 import { buildReport } from "../public/rules.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const TYPES = { ".html": "text/html; charset=utf-8", ".png": "image/png", ".txt": "text/plain", ".xml": "application/xml" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".png": "image/png", ".txt": "text/plain", ".xml": "application/xml", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif", ".ico": "image/x-icon", ".woff2": "font/woff2", ".woff": "font/woff", ".mp3": "audio/mpeg", ".webm": "video/webm", ".mp4": "video/mp4" };
 
 export function serve(dir, port) {
   return new Promise((res) => {

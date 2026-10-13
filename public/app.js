@@ -104,9 +104,24 @@ function reset() {
 let shotImg = null;
 function loadImg(src) { return new Promise((res) => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
 
+// The phone screenshot arrives as screen-sized pieces; join them into one tall image.
+async function phoneImage(shot) {
+  if (!shot) return null;
+  const tiles = shot.tiles && shot.tiles.length ? shot.tiles : [{ y: 0, h: shot.h, data: shot.data }];
+  const imgs = await Promise.all(tiles.map((t) => loadImg(t.data)));
+  if (imgs.some((i) => !i)) return null;
+  const c = document.createElement("canvas");
+  c.width = shot.w || imgs[0].naturalWidth;
+  c.height = shot.h;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+  tiles.forEach((t, i) => g.drawImage(imgs[i], 0, t.y, c.width, t.h));
+  return c;
+}
+
 function cropCanvas(rect, frame) {
   if (!shotImg || !rect) return null;
-  const W = shotImg.naturalWidth, H = shotImg.naturalHeight;
+  const W = shotImg.width, H = shotImg.height;
   if (rect.y > H - 4 || rect.x > W) return null;
   const winH = Math.min(H, Math.max(300, Math.min(520, rect.h + 220)));
   let top = Math.round(rect.y + rect.h / 2 - winH / 2);
@@ -149,7 +164,7 @@ function serpBlock(report, scan) {
 }
 
 async function showReport(report, scan) {
-  shotImg = await loadImg(scan.render.shots && scan.render.shots.mobile && scan.render.shots.mobile.data);
+  shotImg = await phoneImage(scan.render.shots && scan.render.shots.mobile);
   const host = new URL(scan.render.finalUrl).hostname.replace(/^www\./, "");
   const nowN = report.findings.filter((f) => f.severity === "Fix now").length;
   const soonN = report.findings.filter((f) => f.severity === "Fix soon").length;
