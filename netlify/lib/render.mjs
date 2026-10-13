@@ -21,7 +21,9 @@ async function capture(page, { width, height, quality }) {
       window.__hsRaf = window.requestAnimationFrame;
       window.requestAnimationFrame = () => 0;
     }).catch(() => {});
-    await sleep(150);
+    // stop page scripts (timers, game loops) for the moment of capture
+    await cdp.send("Emulation.setScriptExecutionDisabled", { value: true }).catch(() => {});
+    await sleep(200);
     let data;
     try {
       ({ data } = await T(cdp.send("Page.captureScreenshot", { format: "jpeg", quality, captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale: 1 } }), 9000, "full-capture"));
@@ -32,6 +34,7 @@ async function capture(page, { width, height, quality }) {
     }
     return { data: "data:image/jpeg;base64," + data, h: height };
   } finally {
+    await cdp.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {});
     await page.evaluate(() => { if (window.__hsRaf) { window.requestAnimationFrame = window.__hsRaf; delete window.__hsRaf; } }).catch(() => {});
     await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 }).catch(() => {});
     cdp.detach().catch(() => {});
