@@ -2,9 +2,9 @@ import { pageSpeed } from "../lib/speed.mjs";
 import { normalizeUrl, assertPublicHost, json } from "../lib/guard.mjs";
 
 export default async (req) => {
-  if (req.method !== "POST") return json({ error: "Use POST." }, 405);
+  if (req.method !== "POST" && req.method !== "GET") return json({ error: "Use POST." }, 405);
   try {
-    const body = await req.json();
+    const body = req.method === "GET" ? Object.fromEntries(new URL(req.url).searchParams) : await req.json();
     const u = normalizeUrl(body.url);
     await assertPublicHost(u.hostname);
     const strategy = body.strategy === "desktop" ? "desktop" : "mobile";
@@ -15,4 +15,4 @@ export default async (req) => {
   }
 };
 
-export const config = { path: "/api/speed", method: "POST", rateLimit: { action: "rate_limit", windowLimit: 12, windowSize: 60, aggregateBy: ["ip", "domain"] } };
+export const config = { path: "/api/speed", method: ["POST", "GET"], rateLimit: { action: "rate_limit", windowLimit: 12, windowSize: 60, aggregateBy: ["ip", "domain"] } };

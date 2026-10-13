@@ -3,10 +3,11 @@ import { renderAudit } from "../lib/render.mjs";
 import { normalizeUrl, assertPublicHost, json } from "../lib/guard.mjs";
 
 export default async (req) => {
-  if (req.method !== "POST") return json({ error: "Use POST." }, 405);
+  if (req.method !== "POST" && req.method !== "GET") return json({ error: "Use POST." }, 405);
+  const isGet = req.method === "GET";
   let url;
   try {
-    const body = await req.json();
+    const body = isGet ? { url: new URL(req.url).searchParams.get("url") } : await req.json();
     url = normalizeUrl(body.url);
     await assertPublicHost(url.hostname);
   } catch (e) {
@@ -18,6 +19,14 @@ export default async (req) => {
     browser = await launchBrowser();
     const out = await renderAudit(browser, url.href, { budgetMs: 52000 });
     if (!out.ok) return json({ error: out.status ? `The site answered with error ${out.status}, so there was nothing to check.` : "The site didn't load.", status: out.status }, 422);
+    if (isGet) {
+      // compact summary (no screenshots) for quick checks and monitoring
+      const a = out.audit;
+      return json({ finalUrl: out.finalUrl, status: out.status, ms: out.ms, title: a.title, desc: a.desc, h1: a.h1, platform: a.signals.platform,
+        findings: a.findings.map((f) => ({ rule: f.rule, evidence: f.evidence })), deadButtons: out.deadLinks.map((d) => d.text),
+        robotsMetas: a.robotsMetas, signals: a.signals, mobileFoldCtas: out.mobileFold.count, desktopFoldCtas: out.desktopFold ? out.desktopFold.count : null,
+        net404: out.net404, links: a.links.length, notes: out.notes });
+    }
     return json(out);
   } catch (e) {
     const m = String(e && e.message || e);
@@ -32,6 +41,6 @@ export default async (req) => {
 
 export const config = {
   path: "/api/render",
-  method: "POST",
+  method: ["POST", "GET"],
   rateLimit: { action: "rate_limit", windowLimit: 6, windowSize: 60, aggregateBy: ["ip", "domain"] }
 };
