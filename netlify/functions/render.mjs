@@ -3,8 +3,9 @@ import { renderAudit } from "../lib/render.mjs";
 import { normalizeUrl, assertPublicHost, json } from "../lib/guard.mjs";
 
 export default async (req) => {
-  if (req.method !== "POST" && req.method !== "GET") return json({ error: "Use POST." }, 405);
   const isGet = req.method === "GET";
+  const reply = (data, status = 200) => json(isGet && status !== 200 ? { ...data, httpStatus: status } : data, isGet ? 200 : status);
+  if (req.method !== "POST" && !isGet) return reply({ error: "Use POST." }, 405);
   let url;
   try {
     const body = isGet ? { url: new URL(req.url).searchParams.get("url") } : await req.json();
@@ -12,13 +13,13 @@ export default async (req) => {
     await assertPublicHost(url.hostname);
   } catch (e) {
     const msg = e.message === "blocked-host" ? "That address isn't a public website." : /ENOTFOUND|EAI_AGAIN/.test(e.code || e.message) ? "We couldn't find that website. Check the spelling." : e.message;
-    return json({ error: msg }, 400);
+    return reply({ error: msg }, 400);
   }
   let browser;
   try {
     browser = await launchBrowser();
     const out = await renderAudit(browser, url.href, { budgetMs: 52000 });
-    if (!out.ok) return json({ error: out.status ? `The site answered with error ${out.status}, so there was nothing to check.` : "The site didn't load.", status: out.status }, 422);
+    if (!out.ok) return reply({ error: out.status ? `The site answered with error ${out.status}, so there was nothing to check.` : "The site didn't load.", status: out.status }, 422);
     if (isGet) {
       // compact summary (no screenshots) for quick checks and monitoring
       const a = out.audit;
@@ -33,7 +34,7 @@ export default async (req) => {
     const friendly = /ERR_NAME_NOT_RESOLVED/.test(m) ? "We couldn't find that website. Check the spelling."
       : /ERR_CONNECTION|ERR_TIMED_OUT|ERR_SSL|ERR_CERT/.test(m) ? "The website wouldn't connect. It may be down or have a security certificate problem."
       : "Something went wrong loading the site. Try again in a minute.";
-    return json({ error: friendly, detail: m.slice(0, 200) }, 502);
+    return reply({ error: friendly, detail: m.slice(0, 200) }, 502);
   } finally {
     if (browser) await browser.close().catch(() => {});
   }

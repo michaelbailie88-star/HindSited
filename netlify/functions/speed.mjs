@@ -9,7 +9,7 @@ export default async (req) => {
     await assertPublicHost(u.hostname);
     const strategy = body.strategy === "desktop" ? "desktop" : "mobile";
     const out = await pageSpeed(u.href, strategy, Netlify.env.get("PSI_KEY"));
-    return json(out, out.error ? 502 : 200);
+    return json(out, out.error && req.method !== "GET" ? 502 : 200);
   } catch (e) {
     return json({ error: e.message }, 400);
   }
