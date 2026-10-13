@@ -13,7 +13,7 @@ export async function loadMe() {
   const r = await api("/me");
   const me = r.data && r.data.signedIn ? r.data : { signedIn: false };
   const a = $("#account");
-  if (a) a.innerHTML = me.signedIn ? `<span class="acct-email">${esc(me.email)}</span><a class="linkish" href="/account">My account</a><button type="button" class="linkish" id="signOut">Sign out</button>` : "";
+  if (a) a.innerHTML = me.signedIn ? `<span class="acct-email">${esc(me.email)}</span><a class="linkish" href="/account">My account</a><button type="button" class="linkish" id="signOut">Sign out</button>` : `<a class="acct-signin" href="/account?next=${encodeURIComponent(location.pathname)}">Sign in</a>`;
   const so = $("#signOut");
   if (so) so.onclick = async () => { await api("/me", { method: "POST" }); location.href = location.pathname; };
   return me;

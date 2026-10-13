@@ -43,7 +43,11 @@ function panel(html) { const p = $("#panel"); p.innerHTML = `<div class="wrap na
 function renderAccount() {
   const a = $("#account");
   if (!a) return;
-  if (!me.signedIn) { a.innerHTML = ""; return; }
+  if (!me.signedIn) {
+    a.innerHTML = `<a class="acct-signin" href="/account" id="signInLink">Sign in</a>`;
+    $("#signInLink").onclick = (e) => { e.preventDefault(); if (location.pathname !== "/account") history.pushState({}, "", "/account"); showAccountSignIn("/account"); };
+    return;
+  }
   a.innerHTML = `<span class="acct-email">${esc(me.email)}</span><button type="button" class="linkish" id="myReports">My account</button><button type="button" class="linkish" id="signOut">Sign out</button>`;
   $("#signOut").onclick = async () => { await api("/me", { method: "POST" }); me = { signedIn: false }; renderAccount(); goHome(); };
   $("#myReports").onclick = showMyReports;
@@ -102,6 +106,38 @@ function showSignIn(url, note) {
       <p class="muted small">It can take a minute to arrive. Check your spam or promotions folder too. The link works once and expires in 20 minutes.</p>
       <button type="button" class="linkish" id="siBack2">\u2190 Use a different email</button></div>`);
     $("#siBack2").onclick = () => showSignIn(url);
+  };
+}
+
+// Plain sign-in (from the header or /account), not tied to a scan.
+function showAccountSignIn(next) {
+  const p = panel(`<div class="card-panel">
+    <p class="eyebrow">Sign in</p>
+    <h2 class="panel-h">Sign in to HindSited</h2>
+    <p>Enter your email and we'll send you a sign-in link. New here? The same link creates your account.</p>
+    <form id="acSignin" class="stack" novalidate>
+      <label class="sr" for="acEmail">Email address</label>
+      <div class="field"><input id="acEmail" type="email" autocomplete="email" placeholder="you@yourbusiness.com" required><button type="submit">Send my link</button></div>
+      <p class="form-err" id="acSiErr" role="alert" hidden></p>
+    </form>
+    <p class="muted small">No password. No spam. Just the link.</p>
+    <button type="button" class="linkish" id="acSiBack">← Check a site</button>
+  </div>`);
+  $("#acSiBack").onclick = goHome;
+  $("#acEmail").focus();
+  $("#acSignin").onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $("#acEmail").value.trim();
+    const btn = p.querySelector("button[type=submit]");
+    btn.disabled = true;
+    const { status, data } = await api("/auth/start", { method: "POST", body: JSON.stringify({ email, next }) });
+    btn.disabled = false;
+    if (status !== 200 || !data.sent) { const er = $("#acSiErr"); er.textContent = data.error || "Something went wrong. Try again."; er.hidden = false; return; }
+    panel(`<div class="card-panel"><p class="eyebrow">Check your inbox</p><h2 class="panel-h">We sent a link to ${esc(email)}</h2>
+      <p>Tap it to sign in.</p>
+      <p class="muted small">It can take a minute to arrive. Check your spam or promotions folder too. The link works once and expires in 20 minutes.</p>
+      <button type="button" class="linkish" id="acSiBack2">← Use a different email</button></div>`);
+    $("#acSiBack2").onclick = () => showAccountSignIn(next);
   };
 }
 
@@ -252,6 +288,9 @@ async function route() {
     const flash = c === "success" ? { ok: true, text: "Payment received. Your plan is active. Thank you!" } : c === "cancelled" ? { text: "Checkout was cancelled. You haven't been charged." } : c === "pending" ? { text: "Your payment is still processing. Refresh this page in a minute." } : c === "error" ? { text: "We couldn't confirm that payment. If you were charged, email thelazycreatorco@gmail.com and we'll sort it out." } : null;
     if (c) history.replaceState({}, "", "/account");
     if (me.signedIn) { showMyReports(flash); return; }
+    const nx = q0.get("next");
+    showAccountSignIn(nx && nx.startsWith("/") && !nx.startsWith("//") ? nx : "/account");
+    return;
   }
   const q = new URLSearchParams(location.search);
   if (q.get("signin") === "expired") { history.replaceState({}, "", "/"); view("home"); errEl.textContent = "That sign-in link has expired or was already used. Enter your site again to get a new one."; errEl.hidden = false; return; }
