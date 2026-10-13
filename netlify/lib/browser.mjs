@@ -9,7 +9,11 @@ export async function launchBrowser() {
   }
   const { default: chromium } = await import("@sparticuz/chromium-min");
   return puppeteer.launch({
-    args: chromium.args,
+    // Pure software compositing: emulated GPU (SwiftShader) made screenshots of
+    // effect-heavy pages take 5-10s per screen; this takes well under 1s.
+    args: chromium.args
+      .filter((a) => !/^--(use-gl|use-angle|enable-unsafe-swiftshader|in-process-gpu|ignore-gpu-blocklist)/.test(a))
+      .concat(["--disable-gpu", "--disable-gpu-compositing", "--disable-software-rasterizer"]),
     executablePath: await chromium.executablePath(PACK),
     headless: "shell",
     protocolTimeout: 40000,
