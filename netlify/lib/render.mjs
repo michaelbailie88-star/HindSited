@@ -6,6 +6,15 @@ import { assertPublicHost, isPrivateIp, UA, UA_DESKTOP } from "./guard.mjs";
 import net from "node:net";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Screenshot straight through the DevTools protocol. puppeteer's own
+// screenshot waits for every web font, which can hang on some sites.
+async function capture(page, { width, height, quality }) {
+  const cdp = await page.createCDPSession();
+  try {
+    const { data } = await cdp.send("Page.captureScreenshot", { format: "jpeg", quality, captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale: 1 } });
+    return "data:image/jpeg;base64," + data;
+  } finally { cdp.detach().catch(() => {}); }
+}
 // Every step against the page gets a deadline, so a busy or broken page can
 // never stall the whole scan.
 function T(p, ms, label) {
@@ -93,8 +102,8 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     const shotH = Math.min(audit.docH, 9000);
     let mobileShot = null;
     try {
-      const buf = await T(page.screenshot({ type: "jpeg", quality: 55, clip: { x: 0, y: 0, width: 390, height: shotH }, captureBeyondViewport: true }), Math.max(4000, Math.min(12000, left() - 10000)), "screenshot");
-      mobileShot = { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 390, h: shotH };
+      const data = await T(capture(page, { width: 390, height: shotH, quality: 55 }), Math.max(4000, Math.min(12000, left() - 10000)), "screenshot");
+      mobileShot = { data, w: 390, h: shotH };
     } catch (e) { notes.push("shot-failed"); }
 
     // try every "#" link: does clicking it actually do anything?
@@ -172,8 +181,8 @@ async function desktopPass(browser, url, budgetMs) {
     await page.waitForNetworkIdle({ idleTime: 500, timeout: 2000 }).catch(() => {});
     await sleep(500);
     const desktopFold = await T(page.evaluate(foldCta, { w: 1366, h: 800 }), 6000, "fold").catch(() => null);
-    const buf = await T(page.screenshot({ type: "jpeg", quality: 60 }), 10000, "screenshot");
-    return { ok: true, status: resp ? resp.status() : 0, desktopFold, shot: { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 1366, h: 800 }, ms: Date.now() - t0 };
+    const data = await T(capture(page, { width: 1366, height: 800, quality: 60 }), 10000, "screenshot").catch(() => null);
+    return { ok: true, status: resp ? resp.status() : 0, desktopFold, shot: data ? { data, w: 1366, h: 800 } : null, ms: Date.now() - t0 };
   } finally {
     await page.close().catch(() => {});
   }
