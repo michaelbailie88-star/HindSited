@@ -6,21 +6,6 @@ const API = window.HS_API || "/api";
 
 const form = $("#scanForm"), input = $("#url"), go = $("#go"), errEl = $("#formErr");
 
-async function post(path, body, timeoutMs = 70000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(API + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: ctrl.signal });
-    let data = null;
-    try { data = await res.json(); } catch {}
-    if (res.status === 429) return { error: "You're checking sites a little fast. Wait a minute and try again.", status: 429 };
-    if (!res.ok) return { error: (data && data.error) || "Something went wrong (" + res.status + ").", status: res.status, ...(data || {}) };
-    return data;
-  } catch (e) {
-    return { error: e.name === "AbortError" ? "That took too long. The site may be very slow." : "Couldn't reach the checker. Check your connection.", status: 0 };
-  } finally { clearTimeout(t); }
-}
-
 function cleanInput(v) {
   v = v.trim();
   if (!v) return null;
@@ -44,8 +29,10 @@ form.addEventListener("submit", (e) => {
   run(url);
 });
 
-const SKIP_PATH = /\/(cart|checkout|account|login|log-in|signin|sign-in|register|wp-admin|wp-login|search|cdn-cgi|feed|tag|tags|author|wp-json|xmlrpc|cgi-bin)(\/|$)|\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?|mp4|mp3|mov)$/i;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The scan runs on the server in the background (it can take a minute or two
+// on slow sites); this page starts it and follows its progress.
 async function run(url) {
   go.disabled = true;
   $("#hero").hidden = true; $("#checks").hidden = true; $("#report").hidden = true;
@@ -53,85 +40,45 @@ async function run(url) {
   $("#progHost").textContent = new URL(url).hostname.replace(/^www\./, "");
   ["render", "click", "pages", "links", "speed"].forEach((s) => step(s, null));
   window.scrollTo({ top: 0 });
+  step("render", "active");
 
-  step("render", "active"); step("speed", "active");
-  const speedP = Promise.all([post("/speed", { url, strategy: "mobile" }), post("/speed", { url, strategy: "desktop" })]);
+  const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-z0-9-]/gi, "");
+  try {
+    const r = await fetch(API + "/check-bg?id=" + encodeURIComponent(id) + "&url=" + encodeURIComponent(url));
+    if (r.status === 429) { showError("You're checking sites a little fast. Wait a minute and try again."); return; }
+    if (!r.ok && r.status !== 202) { showError("Couldn't start the check (" + r.status + "). Try again in a minute."); return; }
+  } catch { showError("Couldn't reach the checker. Check your connection."); return; }
 
-  const desktopP = post("/render", { url, mode: "desktop" });
-  const render = await post("/render", { url });
-  if (!render || render.error) { showError(render ? render.error : "Unknown error"); return; }
-  step("render", "done");
-  step("click", "done", render.audit.hashCandidates.length ? `Tested ${Math.min(render.audit.hashCandidates.length, 15)} link${render.audit.hashCandidates.length === 1 ? "" : "s"} that should do something` : "No suspicious buttons to test");
-
-  // ---- other pages
-  step("pages", "active");
-  const home = new URL(render.finalUrl);
-  const homeKey = home.origin + home.pathname.replace(/\/$/, "");
-  const sameSite = (u) => u.hostname.replace(/^www\./, "") === home.hostname.replace(/^www\./, "");
-  const cand = [];
-  const seenPath = new Set([homeKey]);
-  let productCount = 0;
-  const ordered = [...render.audit.links.filter((l) => l.internal && l.nav), ...render.audit.links.filter((l) => l.internal && !l.nav)];
-  for (const l of ordered) {
-    let u; try { u = new URL(l.url); } catch { continue; }
-    if (!sameSite(u) || SKIP_PATH.test(u.pathname) || u.search.length > 60) continue;
-    const key = u.origin + u.pathname.replace(/\/$/, "");
-    if (seenPath.has(key)) continue;
-    if (/\/products?\//.test(u.pathname)) { if (productCount >= 4) continue; productCount++; }
-    seenPath.add(key);
-    cand.push(u.href);
-    if (cand.length >= 24) break;
+  const deadline = Date.now() + 5 * 60 * 1000;
+  let data = null, misses = 0;
+  while (Date.now() < deadline) {
+    await sleep(2500);
+    try {
+      const r = await fetch(API + "/check?id=" + encodeURIComponent(id), { cache: "no-store" });
+      data = await r.json();
+    } catch { if (++misses > 8) { showError("Lost touch with the checker. Check your connection and try again."); return; } continue; }
+    if (data.state === "error") { showError(data.error || "Something went wrong checking the site."); return; }
+    if (data.state === "done" && data.scan) break;
+    showStages(data.stages || []);
   }
-  $("#pagesNote").textContent = cand.length ? `Reading ${cand.length} more page${cand.length === 1 ? "" : "s"}` : "No other pages found";
-  const batches = [];
-  for (let i = 0; i < cand.length; i += 8) batches.push(cand.slice(i, i + 8));
-  if (!batches.length) batches.push([]);
-  const crawlRes = await Promise.all(batches.map((b, i) => post("/crawl", { urls: b, origin: i === 0 ? home.origin : undefined })));
-  const pages = crawlRes.flatMap((r) => (r && r.pages) || []);
-  const site = (crawlRes.find((r) => r && r.site) || {}).site || null;
-  const okCount = pages.filter((p) => p.status >= 200 && p.status < 300).length;
-  step("pages", "done", `Checked ${okCount + 1} page${okCount ? "s" : ""}`);
+  if (!data || data.state !== "done" || !data.scan) { showError("The check took too long. The site may be very slow. Try again in a few minutes."); return; }
 
-  // ---- links
-  step("links", "active");
-  const linkMap = new Map();
-  const addLink = (url, meta) => { const k = url.replace(/#.*$/, ""); if (!linkMap.has(k) && !seenPath.has(k.replace(/\/$/, "")) && k.replace(/\/$/, "") !== homeKey) linkMap.set(k, { url: k, ...meta }); };
-  for (const l of render.audit.links) addLink(l.url, { internal: l.internal, text: l.text, from: render.finalUrl, kind: "page" });
-  for (const p of pages) {
-    for (const l of p.links || []) addLink(l.url, { internal: l.internal, text: l.text, from: p.finalUrl || p.url, kind: "page" });
-  }
-  const imgList = [];
-  for (const p of pages) for (const im of p.images || []) if (!linkMap.has(im) && imgList.length < 40) { imgList.push(im); linkMap.set(im, { url: im, internal: sameSite(new URL(im)), from: p.finalUrl || p.url, kind: "image" }); }
-  // internal pages first, then external, images last; cap
-  const all = [...linkMap.values()];
-  const queue = [...all.filter((x) => x.kind === "page" && x.internal), ...all.filter((x) => x.kind === "page" && !x.internal), ...all.filter((x) => x.kind === "image")].slice(0, 160);
-  $("#linksNote").textContent = `Following ${queue.length} link${queue.length === 1 ? "" : "s"} and images`;
-  const linkResults = [];
-  const lb = [];
-  for (let i = 0; i < queue.length; i += 40) lb.push(queue.slice(i, i + 40));
-  for (let i = 0; i < lb.length; i += 2) {
-    const rs = await Promise.all(lb.slice(i, i + 2).map((b) => post("/links", { items: b.map((x) => ({ url: x.url, internal: x.internal })) })));
-    rs.forEach((r, j) => (r && r.results || []).forEach((res, k) => { const src = lb[i + j][k]; linkResults.push({ ...src, ...res }); }));
-  }
-  // crawled pages that errored count as broken internal links
-  for (const p of pages) if (p.status === 404 || p.status === 410 || p.status >= 500) {
-    const from = render.audit.links.find((l) => l.url.replace(/\/$/, "") === p.url.replace(/\/$/, ""));
-    linkResults.push({ url: p.url, broken: true, reason: String(p.status), kind: "page", internal: true, text: from ? from.text : "", from: render.finalUrl });
-  }
-  step("links", "done", `Followed ${linkResults.length} links and images`);
-
-  // ---- desktop view + speed
-  const desk = await desktopP;
-  if (desk && !desk.error) { render.desktopFold = desk.desktopFold; render.shots.desktop = desk.shot; }
-  const [mobile, desktop] = await speedP;
-  const speedOk = (mobile && !mobile.error) || (desktop && !desktop.error);
+  const scan = data.scan;
+  ["render", "click", "pages", "links"].forEach((s) => step(s, "done"));
+  const speedOk = (scan.speed.mobile && !scan.speed.mobile.error) || (scan.speed.desktop && !scan.speed.desktop.error);
   step("speed", speedOk ? "done" : "skipped", speedOk ? "Done" : "Google's speed test didn't respond this time");
-
-  const scan = { render, pages, site, links: linkResults, linksChecked: true, speed: { mobile, desktop } };
   const report = buildReport(scan);
-  try { sessionStorage.setItem("hs-last", JSON.stringify({ url, at: Date.now() })); } catch {}
   await showReport(report, scan);
   go.disabled = false;
+}
+
+function showStages(stages) {
+  const has = (p) => stages.some((s) => s.startsWith(p));
+  if (has("render:clicked") || has("rendered")) { step("render", "done"); step("click", "done"); }
+  else if (has("render:audited")) { step("render", "done"); step("click", "active"); }
+  if (has("rendered")) step("pages", "active");
+  if (has("pages")) { step("pages", "done"); step("links", "active"); }
+  if (has("links")) { step("links", "done"); step("speed", "active"); }
 }
 
 function showError(msg) {

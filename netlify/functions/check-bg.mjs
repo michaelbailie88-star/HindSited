@@ -1,4 +1,6 @@
-// Background full scan: stores a compact report in Blobs for /api/check.
+// Background scan (up to 15 min). The site's browser client starts it and
+// polls /api/check for progress and the finished scan, because normal
+// functions are cut off at about 30 seconds.
 import { getStore } from "@netlify/blobs";
 import { launchBrowser } from "../lib/browser.mjs";
 import { fullScan } from "../lib/pipeline.mjs";
@@ -10,7 +12,9 @@ export default async (req) => {
   const id = (q.get("id") || "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
   if (!id) return;
   const store = getStore("checks");
-  const save = (data) => store.setJSON(id, { ...data, at: new Date().toISOString() });
+  let chain = Promise.resolve();
+  // saves run strictly in order so a late progress update never overwrites the result
+  const save = (data) => (chain = chain.then(() => store.setJSON(id, { ...data, at: new Date().toISOString() })).catch(() => {}));
   let browser;
   try {
     const u = normalizeUrl(q.get("url"));
@@ -18,7 +22,7 @@ export default async (req) => {
     await save({ state: "running", url: u.href });
     const stages = [];
     const started = Date.now();
-    const log = (st) => { stages.push(st + "@" + Math.round((Date.now() - started) / 1000) + "s"); save({ state: "running", url: u.href, stages }).catch(() => {}); };
+    const log = (st) => { stages.push(st + "@" + Math.round((Date.now() - started) / 1000) + "s"); save({ state: "running", url: u.href, stages }); };
     if (q.get("only") === "client") {
       // replay exactly what the browser client does, against the live endpoints
       const base = new URL(req.url).origin;
@@ -50,7 +54,10 @@ export default async (req) => {
       return await save({ state: "done", url: u.href, stages, ok: r.ok, status: r.status, ms: r.ms, notes: r.notes, findings: r.audit ? r.audit.findings.map((f) => f.rule + ": " + f.evidence) : null, hash: r.audit ? r.audit.hashCandidates.length : null });
     }
     const out = await fullScan(browser, u.href, { psiKey: Netlify.env.get("PSI_KEY"), log });
-    if (out.error) return await save({ state: "error", url: u.href, error: out.render });
+    if (out.error) {
+      const st = out.render && out.render.status;
+      return await save({ state: "error", url: u.href, stages, error: st ? `The site answered with error ${st}, so there was nothing to check.` : "The site didn't load." });
+    }
     const r = buildReport(out.scan);
     const sp = out.scan.speed;
     await save({
@@ -59,10 +66,17 @@ export default async (req) => {
       findings: r.findings.map((f) => ({ rule: f.rule, severity: f.severity, title: f.title, items: f.items.slice(0, 6).map((i) => (i.evidence || "") + (i.page ? "  @ " + i.page : "")) })),
       passed: r.passed.map((p) => p.rule),
       speed: { mobile: sp.mobile && (sp.mobile.error ? { error: sp.mobile.error, detail: sp.mobile.detail } : sp.mobile.scores), desktop: sp.desktop && (sp.desktop.error ? { error: sp.desktop.error, detail: sp.desktop.detail } : sp.desktop.scores) },
-      renderNotes: out.scan.render.notes, renderMs: out.scan.render.ms, deadButtonsTested: out.scan.render.audit.hashCandidates.length
+      renderNotes: out.scan.render.notes, renderMs: out.scan.render.ms, deadButtonsTested: out.scan.render.audit.hashCandidates.length,
+      stages, scan: out.scan
     });
   } catch (e) {
-    await save({ state: "error", error: String(e && e.stack || e).slice(0, 600) });
+    const m = String((e && e.code) || "") + " " + String((e && e.message) || e);
+    const friendly = /blocked-host/.test(m) ? "That address isn't a public website."
+      : /ENOTFOUND|EAI_AGAIN|EBUSY|getaddrinfo|ERR_NAME_NOT_RESOLVED/.test(m) ? "We couldn't find that website. Check the spelling."
+      : /ERR_CONNECTION|ERR_TIMED_OUT|ERR_SSL|ERR_CERT/.test(m) ? "The website wouldn't connect. It may be down or have a security certificate problem."
+      : /doesn't look like|Only |Enter |Addresses with/.test(m) ? String(e.message)
+      : "Something went wrong checking the site. Try again in a minute.";
+    await save({ state: "error", error: friendly, detail: m.slice(0, 400) });
   } finally {
     if (browser) await browser.close().catch(() => {});
   }

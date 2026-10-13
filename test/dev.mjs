@@ -12,6 +12,22 @@ const fns = {
   "/api/speed": (await import("../netlify/functions/speed.mjs")).default
 };
 const pub = path.join(here, "..", "public");
+// local stand-in for the background scan + Blobs store
+const jobs = new Map();
+const { fullScan } = await import("../netlify/lib/pipeline.mjs");
+const { launchBrowser } = await import("../netlify/lib/browser.mjs");
+fns["/api/check-bg"] = async (req) => {
+  const q = new URL(req.url).searchParams; const id = q.get("id");
+  const stages = []; jobs.set(id, { state: "running", stages });
+  (async () => {
+    const b = await launchBrowser();
+    try { const out = await fullScan(b, q.get("url"), { log: (s) => stages.push(s) }); jobs.set(id, out.error ? { state: "error", error: "The site didn't load." } : { state: "done", scan: out.scan, stages }); }
+    catch (e) { jobs.set(id, { state: "error", error: String(e.message) }); }
+    finally { await b.close(); }
+  })();
+  return new Response(null, { status: 202 });
+};
+fns["/api/check"] = async (req) => new Response(JSON.stringify(jobs.get(new URL(req.url).searchParams.get("id")) || { state: "unknown" }), { headers: { "content-type": "application/json" } });
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".txt": "text/plain" };
 export function startDev(port = 8100) {
   return new Promise((res) => {
