@@ -21,6 +21,11 @@ export default async (req) => {
     const log = (st) => { stages.push(st + "@" + Math.round((Date.now() - started) / 1000) + "s"); save({ state: "running", url: u.href, stages }).catch(() => {}); };
     browser = await launchBrowser();
     log("browser");
+    if (q.get("only") === "render") {
+      const { renderAudit } = await import("../lib/render.mjs");
+      const r = await renderAudit(browser, u.href, { budgetMs: 55000, onStage: log, mode: q.get("mode") || "mobile" });
+      return await save({ state: "done", url: u.href, stages, ok: r.ok, status: r.status, ms: r.ms, notes: r.notes, findings: r.audit ? r.audit.findings.map((f) => f.rule + ": " + f.evidence) : null, hash: r.audit ? r.audit.hashCandidates.length : null });
+    }
     const out = await fullScan(browser, u.href, { psiKey: Netlify.env.get("PSI_KEY"), log });
     if (out.error) return await save({ state: "error", url: u.href, error: out.render });
     const r = buildReport(out.scan);

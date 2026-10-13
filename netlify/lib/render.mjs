@@ -41,6 +41,11 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
         return req.continue();
       } catch { try { req.abort(); } catch {} }
     });
+    const pending = new Map();
+    page.on("request", (rq) => pending.set(rq, Date.now()));
+    const done = (rq) => pending.delete(rq);
+    page.on("requestfinished", done);
+    page.on("requestfailed", done);
     page.on("response", (res) => {
       const rt = res.request().resourceType();
       if (rt === "image" && (res.status() === 404 || res.status() === 410)) net404.push(res.url());
@@ -64,7 +69,11 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     }
 
     // scroll to trigger lazy content, then back to top
-    stage("loaded");
+    {
+      const slow = [...pending.entries()].filter(([, t]) => Date.now() - t > 3000).slice(0, 5).map(([rq, t]) => rq.resourceType() + " " + rq.url().slice(0, 90) + " " + Math.round((Date.now() - t) / 1000) + "s");
+      if (slow.length) notes.push("still-loading: " + slow.join(" | "));
+    }
+    stage("loaded" + (notes.includes("slow-load") ? "(slow)" : ""));
     await T(page.evaluate(async (limitMs) => {
       const s = Date.now();
       let y = 0;
