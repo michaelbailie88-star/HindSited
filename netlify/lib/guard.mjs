@@ -90,3 +90,15 @@ export async function safeFetch(url, { method = "GET", timeout = 8000, maxBytes 
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
+
+// "shop.example.com" and "www.example.com" are the same site; hosting
+// platforms' subdomains (you.netlify.app) are separate sites.
+const PLATFORM_SUFFIX = /(?:^|\.)(?:netlify\.app|vercel\.app|github\.io|pages\.dev|web\.app|firebaseapp\.com|herokuapp\.com|onrender\.com|wixsite\.com|squarespace\.com|myshopify\.com|wordpress\.com|blogspot\.com|weebly\.com|webflow\.io|godaddysites\.com|square\.site|carrd\.co|framer\.website|framer\.app|glitch\.me|replit\.app|bubbleapps\.io|ueniweb\.com|business\.site)$/i;
+export function siteKey(hostname) {
+  const h = String(hostname).toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
+  const parts = h.split(".");
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) return h;
+  if (PLATFORM_SUFFIX.test(h)) return parts.slice(-3).join(".");
+  if (parts.length >= 3 && /^(?:co|com|org|net|gov|ac|edu|ltd|plc|nom|gen|qc|on|bc|ab)$/.test(parts[parts.length - 2]) && parts[parts.length - 1].length === 2) return parts.slice(-3).join(".");
+  return parts.slice(-2).join(".");
+}

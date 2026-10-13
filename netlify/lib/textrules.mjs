@@ -6,17 +6,18 @@ export function makeTextRules() {
   const MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
   const DAY = 86400000;
 
+  // Wording that only ever appears as builder placeholder text.
   const TEMPLATE_PHRASES = [
     "this is a paragraph", "click here to add your own", "click to edit", "add your own content",
-    "i'm a paragraph", "i’m a paragraph", "i'm a title", "i’m a title", "add a title", "your title here",
-    "insert text here", "sample text", "your text here", "enter your text", "text goes here",
-    "heading goes here", "subheading goes here", "tell your visitors", "describe your business",
-    "company name here", "your company name", "your business name", "business name here",
-    "add a description", "this is the space to", "use this space to", "product name here",
-    "write a short description", "add your text", "edit this text", "double click to edit",
-    "start writing here", "write your caption here", "your headline here", "add a heading",
-    "add paragraph text", "change this text"
+    "i'm a paragraph", "i\u2019m a paragraph", "i'm a title", "i\u2019m a title", "your title here",
+    "insert text here", "your text here", "enter your text", "text goes here", "heading goes here",
+    "subheading goes here", "company name here", "business name here", "this is the space to",
+    "product name here", "double click to edit", "write your caption here", "your headline here",
+    "add paragraph text", "change this text", "edit this text"
   ];
+  // Wording that is a placeholder only when it stands alone (a whole line),
+  // because real copy can contain it ("protecting your business name").
+  const TEMPLATE_ALONE = /^\s*(?:your (?:business|company) name|add a (?:title|heading|description)|add your text|sample text|tell your visitors.{0,60}|describe your business.{0,40}|use this space to.{0,80}|write a short description.{0,40}|start writing here|placeholder(?: text)?)\s*[.!:]?\s*$/i;
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   const R = {
@@ -110,6 +111,7 @@ export function makeTextRules() {
     let h;
     if ((h = first(R.lorem, text))) hits.push({ rule: "lorem", ...h });
     if ((h = first(R.template_text, text))) hits.push({ rule: "template_text", ...h });
+    else if (TEMPLATE_ALONE.test(text)) hits.push({ rule: "template_text", index: text.search(/\S/), length: text.trim().length });
     if ((h = first(R.placeholder_phone, text)) || (h = first(R.placeholder_email, text))) hits.push({ rule: "placeholder_contact", ...h });
     if ((h = first(R.code_error, text))) hits.push({ rule: "code_error", ...h });
     if ((h = first(R.markup_leftover, text))) hits.push({ rule: "markup_leftover", ...h });

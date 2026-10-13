@@ -49,8 +49,8 @@ async function run(url) {
     if (!r.ok && r.status !== 202) { showError("Couldn't start the check (" + r.status + "). Try again in a minute."); return; }
   } catch { showError("Couldn't reach the checker. Check your connection."); return; }
 
-  const deadline = Date.now() + 5 * 60 * 1000;
-  let data = null, misses = 0;
+  const deadline = Date.now() + 6 * 60 * 1000;
+  let data = null, misses = 0, lastCount = -1, lastChange = Date.now();
   while (Date.now() < deadline) {
     await sleep(2500);
     try {
@@ -59,6 +59,10 @@ async function run(url) {
     } catch { if (++misses > 8) { showError("Lost touch with the checker. Check your connection and try again."); return; } continue; }
     if (data.state === "error") { showError(data.error || "Something went wrong checking the site."); return; }
     if (data.state === "done" && data.scan) break;
+    const n = (data.stages || []).length;
+    if (n !== lastCount) { lastCount = n; lastChange = Date.now(); }
+    // no progress for 3 minutes means the check died on the server
+    else if (Date.now() - lastChange > 180000) { showError("The check stopped before it finished. Please try again. If it keeps happening, the site may be blocking automated visitors."); return; }
     showStages(data.stages || []);
   }
   if (!data || data.state !== "done" || !data.scan) { showError("The check took too long. The site may be very slow. Try again in a few minutes."); return; }

@@ -10,7 +10,7 @@ export async function pageSpeed(url, strategy, key) {
   for (const c of ["performance", "seo", "accessibility", "best-practices"]) qs.append("category", c);
   if (key) qs.set("key", key);
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 55000);
+  const t = setTimeout(() => ctrl.abort(), 100000);
   let res;
   try { res = await fetch("https://www.googleapis.com/pagespeedonline/v5/runPagespeed?" + qs, { signal: ctrl.signal }); }
   catch { return { error: "timeout" }; }
