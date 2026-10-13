@@ -9,7 +9,7 @@ export async function launchBrowser() {
   }
   const { default: chromium } = await import("@sparticuz/chromium-min");
   return puppeteer.launch({
-    args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+    args: chromium.args,
     executablePath: await chromium.executablePath(PACK),
     headless: "shell",
     defaultViewport: { width: 390, height: 844 }
