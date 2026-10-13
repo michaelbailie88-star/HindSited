@@ -25,6 +25,16 @@
   status = 200
 
 [[redirects]]
+  from = "/quotes"
+  to = "/quotes.html"
+  status = 200
+
+[[redirects]]
+  from = "/q/*"
+  to = "/quote.html"
+  status = 200
+
+[[redirects]]
   from = "/account"
   to = "/index.html"
   status = 200
@@ -34,4 +44,64 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/"
+  [headers.values]
     X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/account"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/r/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/reviews"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/booster.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/quotes"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/quotes.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/review/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/review.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+# the public quote calculator is made to be embedded on owners' websites
+[[headers]]
+  for = "/q/*"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors *"

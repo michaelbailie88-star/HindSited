@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quote Calculator | HindSited</title>
+<meta name="description" content="Put an instant price calculator on your website. Visitors get a price in seconds; you get their details in your inbox.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14161b">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="/" aria-label="HindSited home"><span class="brand-mark" aria-hidden="true"></span><span class="wm">Hind<span>Sited</span></span></a>
+    <nav class="tools-nav" aria-label="Tools"><a href="/">Website check</a><a href="/reviews">Review Booster</a><a href="/quotes" aria-current="page">Quote Calculator</a></nav>
+    <div class="top-right"><div class="account" id="account"></div><span class="by">by <a href="https://thelazycreatorcompany.com" rel="noopener">The Lazy Creator Company</a></span></div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="tool-hero" id="intro">
+    <div class="wrap narrow">
+      <p class="eyebrow">Quote Calculator</p>
+      <h1 class="tool-h">Turn "how much?" into booked jobs.</h1>
+      <p class="lede">Build a price calculator for your services in a few minutes, with no formulas. Visitors answer a few quick questions and see a price straight away. When they ask for their exact quote, their details land in your inbox.</p>
+      <ul class="ticks"><li>Ready-made templates for cleaning, landscaping, painting, plumbing, moving, events, detailing and photography</li><li>Edit questions and prices in plain English, with a live preview</li><li>Paste one line into any website, or share a link and QR code</li></ul>
+      <div id="signin" class="signin-box"></div>
+    </div>
+  </section>
+  <section class="tool-app" id="app" hidden></section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <p><b>HindSited</b> is made by <a href="https://thelazycreatorcompany.com" rel="noopener">The Lazy Creator Company</a>, a one-person web studio in Guelph, Ontario.</p>
+    <p class="muted">We only read what's publicly visible on your site. We never fill in or submit your forms.</p>
+  </div>
+</footer>
+<script src="/vendor/qrcode.js"></script>
+<script type="module" src="/quotes.js"></script>
+</body>
+</html>

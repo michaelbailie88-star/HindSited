@@ -351,3 +351,73 @@ a.tool { text-decoration: none; color: inherit; display: inline-block; }
 .rp-note.ok { color: var(--ok); }
 .rp-foot { text-align: center; }
 a.btn { text-decoration: none; display: inline-block; }
+
+/* quote calculator (public + preview) */
+.quote-page { padding: 28px 0 40px; }
+html.embed body { background: transparent; }
+html.embed .quote-page { padding: 0; }
+html.embed .skip { display: none; }
+.calc { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 24px 20px; box-shadow: var(--shadow); max-width: 600px; margin: 0 auto; }
+@media (min-width: 560px) { .calc { padding: 30px 30px; } }
+.calc-top { display: flex; justify-content: center; margin-bottom: 10px; }
+.calc-top img { max-height: 60px; max-width: 220px; object-fit: contain; }
+.calc-biz { font: 850 20px/1.1 var(--display); color: var(--brand, var(--mark)); }
+.calc-h { font: 850 clamp(24px, 5vw, 30px)/1.12 var(--display); text-align: center; margin: 0 0 18px; letter-spacing: -.01em; }
+.calc-form { display: grid; gap: 16px; }
+.cq { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.cq-l { font: 700 16px/1.3 var(--body); padding: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.opt span { display: block; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 13px; font-size: 15px; cursor: pointer; }
+.opt input:checked + span { border-color: var(--brand, var(--mark)); background: color-mix(in srgb, var(--brand, #e5461d) 10%, #fff); font-weight: 700; }
+.opt input:focus-visible + span { outline: 3px solid var(--brand, var(--mark)); outline-offset: 2px; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button { width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; font: 700 20px/1 var(--body); cursor: pointer; }
+.stepper input { width: 90px; text-align: center; font: 700 18px/1 var(--body); padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; }
+.unit { color: var(--muted); }
+.calc-price { margin: 22px 0 18px; background: var(--paper); border-radius: 14px; padding: 16px 18px; display: grid; gap: 4px; text-align: center; }
+.calc-amount { font: 850 clamp(30px, 7vw, 40px)/1.1 var(--display); color: var(--brand, var(--mark)); }
+.calc-lead { display: grid; gap: 10px; }
+.calc-lead label { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+.calc-lead input, .calc-lead textarea { font: 400 16px/1.4 var(--body); padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
+.calc-btn { background: var(--brand, var(--mark)); color: #fff; border: 0; border-radius: 12px; padding: 16px; font: 800 17px/1 var(--display); cursor: pointer; }
+.calc-btn:disabled { opacity: .6; }
+.calc-msg { color: #a32a0c; font-weight: 600; margin: 0; }
+.calc-done { background: var(--ok-soft); color: var(--ok); font-weight: 700; padding: 14px; border-radius: 12px; margin: 0; }
+.calc-paused { background: var(--amber-soft); color: #7a4700; padding: 14px; border-radius: 12px; font-weight: 600; text-align: center; }
+.calc-badge { text-align: center; font-size: 12.5px; color: var(--muted); margin: 16px 0 0; }
+
+/* builder */
+.tpl-grid { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin: 18px 0; }
+@media (min-width: 720px) { .tpl-grid { grid-template-columns: repeat(3, 1fr); } }
+.tpl { background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 16px 12px; font: 700 15px/1.3 var(--body); cursor: pointer; text-align: left; }
+.tpl:hover { border-color: var(--ink); }
+.builder { display: grid; gap: 24px; align-items: start; }
+@media (min-width: 1040px) { .builder { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); } .b-prev { position: sticky; top: 16px; } }
+.prev-frame { background: var(--paper-2); border-radius: 18px; padding: 16px; }
+.row3, .row4 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+@media (min-width: 640px) { .row3 { grid-template-columns: repeat(3, 1fr); } .row4 { grid-template-columns: repeat(5, 1fr); } }
+.row4 label, .oe label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.row4 input, .oe input, .qe-label { font: 400 15px/1.3 var(--body); padding: 9px 10px; border: 1.5px solid var(--line); border-radius: 9px; background: #fff; width: 100%; min-width: 0; }
+.qe { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 12px; background: #fff; display: grid; gap: 10px; }
+.qe-top { display: flex; gap: 6px; align-items: center; }
+.qe-label { font-weight: 700; flex: 1; }
+.qe-type { font: 700 11px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.icon { width: 34px; height: 34px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; cursor: pointer; flex: none; }
+.opt-ed { display: grid; gap: 8px; }
+.oe { display: grid; grid-template-columns: minmax(0, 1fr) 90px 70px 34px; gap: 6px; align-items: end; }
+.oe:not(:has(input[data-o="mult"])) { grid-template-columns: minmax(0, 1fr) 90px 34px; }
+.save-row { margin-top: 20px; align-items: center; }
+.embed-code { display: block; font: 13px/1.5 var(--mono); background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow-wrap: anywhere; margin: 8px 0 10px; }
+.share-row { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 720px) { .share-row { grid-template-columns: 1fr auto; } }
+.qr-box { display: grid; gap: 8px; justify-items: center; }
+.lead-table { overflow-x: auto; margin-top: 12px; }
+.lead-table table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+.lead-table th, .lead-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.lead-table th { font: 700 12px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.brand-form label, .row3 > *, .row2 > * { min-width: 0; }
+.brand-form input:not([type=color]):not([type=file]), .brand-form select { width: 100%; }
+.brand-form input[type=file] { max-width: 100%; }
+.b-edit, .b-prev { min-width: 0; }
