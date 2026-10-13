@@ -8,12 +8,34 @@ import net from "node:net";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Screenshot straight through the DevTools protocol. puppeteer's own
 // screenshot waits for every web font, which can hang on some sites.
+// Busy pages (canvas games, particle backgrounds) can keep the browser too
+// busy to paint a screenshot, so animations are paused for the capture and
+// resumed afterwards.
 async function capture(page, { width, height, quality }) {
   const cdp = await page.createCDPSession();
   try {
-    const { data } = await cdp.send("Page.captureScreenshot", { format: "jpeg", quality, captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale: 1 } });
-    return "data:image/jpeg;base64," + data;
-  } finally { cdp.detach().catch(() => {}); }
+    await cdp.send("Animation.enable").catch(() => {});
+    await cdp.send("Animation.setPlaybackRate", { playbackRate: 0 }).catch(() => {});
+    await page.evaluate(() => {
+      if (window.__hsRaf) return;
+      window.__hsRaf = window.requestAnimationFrame;
+      window.requestAnimationFrame = () => 0;
+    }).catch(() => {});
+    await sleep(150);
+    let data;
+    try {
+      ({ data } = await T(cdp.send("Page.captureScreenshot", { format: "jpeg", quality, captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale: 1 } }), 9000, "full-capture"));
+    } catch {
+      // fall back to just the first screen
+      ({ data } = await cdp.send("Page.captureScreenshot", { format: "jpeg", quality, clip: { x: 0, y: 0, width, height: Math.min(height, width > 800 ? 800 : 844), scale: 1 } }));
+      height = Math.min(height, width > 800 ? 800 : 844);
+    }
+    return { data: "data:image/jpeg;base64," + data, h: height };
+  } finally {
+    await page.evaluate(() => { if (window.__hsRaf) { window.requestAnimationFrame = window.__hsRaf; delete window.__hsRaf; } }).catch(() => {});
+    await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 }).catch(() => {});
+    cdp.detach().catch(() => {});
+  }
 }
 // Every step against the page gets a deadline, so a busy or broken page can
 // never stall the whole scan.
@@ -104,9 +126,9 @@ export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.n
     const shotH = Math.min(audit.docH, 7000);
     let mobileShot = null;
     try {
-      const data = await T(capture(page, { width: 390, height: shotH, quality: 55 }), Math.max(4000, Math.min(12000, left() - 10000)), "screenshot");
-      mobileShot = { data, w: 390, h: shotH };
-    } catch (e) { notes.push("shot-failed"); }
+      const cap = await T(capture(page, { width: 390, height: shotH, quality: 55 }), Math.max(6000, Math.min(20000, left() - 8000)), "screenshot");
+      mobileShot = { data: cap.data, w: 390, h: cap.h };
+    } catch (e) { notes.push("shot-failed: " + String(e.message).slice(0, 80)); }
 
     // try every "#" link: does clicking it actually do anything?
     const deadLinks = [];
@@ -185,8 +207,8 @@ async function desktopPass(browser, url, budgetMs) {
     await page.waitForNetworkIdle({ idleTime: 500, timeout: 2000 }).catch(() => {});
     await sleep(500);
     const desktopFold = await T(page.evaluate(foldCta, { w: 1366, h: 800 }), 6000, "fold").catch(() => null);
-    const data = await T(capture(page, { width: 1366, height: 800, quality: 60 }), 10000, "screenshot").catch(() => null);
-    return { ok: true, status: resp ? resp.status() : 0, desktopFold, shot: data ? { data, w: 1366, h: 800 } : null, ms: Date.now() - t0 };
+    const cap = await T(capture(page, { width: 1366, height: 800, quality: 60 }), 15000, "screenshot").catch(() => null);
+    return { ok: true, status: resp ? resp.status() : 0, desktopFold, shot: cap ? { data: cap.data, w: 1366, h: 800 } : null, ms: Date.now() - t0 };
   } finally {
     await page.close().catch(() => {});
   }
