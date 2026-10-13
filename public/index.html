@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HindSited | Free Website Check: Find What's Costing You Customers</title>
+<meta name="description" content="HindSited opens your website like a customer on a real phone, clicks every button, follows every link and reads every word, then shows you exactly what's costing you customers.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14161b">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="./" aria-label="HindSited home"><span class="brand-mark" aria-hidden="true"></span><span class="wm">Hind<span>Sited</span></span></a>
+    <span class="by">by <a href="https://thelazycreatorcompany.com" rel="noopener">The Lazy Creator Company</a></span>
+  </div>
+</header>
+
+<main id="main">
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="wrap hero-in">
+      <div class="hero-copy">
+        <p class="eyebrow">Free website check</p>
+        <h1>See what your website's been <em>hiding</em>.</h1>
+        <p class="lede">HindSited opens your site the way your customers do, on a real phone. It clicks the buttons, follows the links and reads every word, then shows you exactly what's quietly costing you customers.</p>
+        <form class="scan-form" id="scanForm" novalidate>
+          <label class="sr" for="url">Your website address</label>
+          <div class="field">
+            <input id="url" name="url" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="yourbusiness.com" required>
+            <button type="submit" id="go">Check my site</button>
+          </div>
+          <p class="form-note" id="formNote">Takes about a minute. Nothing to install.</p>
+          <p class="form-err" id="formErr" role="alert" hidden></p>
+        </form>
+      </div>
+      <div class="chart" aria-hidden="true">
+        <div class="chart-card">
+          <div class="row r1">H</div>
+          <div class="row r2">I N</div>
+          <div class="row r3"><span class="circled">D S I</span></div>
+          <div class="row r4">T E D</div>
+          <div class="row r5">2 0 / 2 0</div>
+          <div class="row r6">YOUR SITE, SEEN CLEARLY</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IT CHECKS -->
+  <section class="checks" id="checks">
+    <div class="wrap">
+      <h2 class="sec-h">The things customers notice and owners don't</h2>
+      <div class="check-grid">
+        <article><h3>Getting customers</h3><p>Is there a button to tap on the first screen? Does your phone link dial a real number? Can people reach you from the homepage?</p></article>
+        <article><h3>Embarrassing mistakes</h3><p>Template text, fake numbers like 123-456-7890, $0 prices, error messages, expired sales and a footer stuck in 2019.</p></article>
+        <article><h3>Broken things</h3><p>Dead links, missing images, social icons that go nowhere, and buttons we actually click to make sure they work.</p></article>
+        <article><h3>Trust</h3><p>A secure connection, reviews where people can see them, and the address, hours and privacy details careful buyers look for.</p></article>
+        <article><h3>Being found on Google</h3><p>Hidden &ldquo;don't list me&rdquo; tags, missing titles and descriptions, and photos Google can't read.</p></article>
+        <article><h3>Speed and phones</h3><p>Google's own speed test on phone and computer, pages wider than the screen, and images far bigger than they need to be.</p></article>
+      </div>
+      <p class="checks-foot">Every finding comes with a plain-English explanation, what it's likely costing you, how to fix it, and where it is on your page.</p>
+    </div>
+  </section>
+
+  <!-- PROGRESS -->
+  <section class="progress" id="progress" hidden aria-live="polite">
+    <div class="wrap narrow">
+      <p class="eyebrow">Checking</p>
+      <h2 class="prog-h" id="progHost">yourbusiness.com</h2>
+      <ol class="steps" id="steps">
+        <li data-step="render"><span class="dot"></span><div><b>Opening it on a phone</b><small>Loading the page like a visitor would, then reading every word</small></div></li>
+        <li data-step="click"><span class="dot"></span><div><b>Clicking your buttons</b><small>Testing links that should do something</small></div></li>
+        <li data-step="pages"><span class="dot"></span><div><b>Checking your other pages</b><small id="pagesNote">Up to 25 pages</small></div></li>
+        <li data-step="links"><span class="dot"></span><div><b>Following your links</b><small id="linksNote">Making sure they lead somewhere</small></div></li>
+        <li data-step="speed"><span class="dot"></span><div><b>Running Google's speed test</b><small>Phone and computer</small></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- REPORT -->
+  <section class="report" id="report" hidden></section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <p><b>HindSited</b> is made by <a href="https://thelazycreatorcompany.com" rel="noopener">The Lazy Creator Company</a>, a one-person web studio in Guelph, Ontario.</p>
+    <p class="muted">We only read what's publicly visible on your site. We never fill in or submit your forms.</p>
+  </div>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>

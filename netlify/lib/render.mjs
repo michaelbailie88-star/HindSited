@@ -1,0 +1,136 @@
+// Renders a page in real Chromium, the way a visitor's phone sees it, and runs
+// the in-page audit. Works with any puppeteer Browser instance.
+import { pageAudit, foldCta } from "./pageaudit.mjs";
+import { makeTextRules } from "./textrules.mjs";
+import { assertPublicHost, isPrivateIp, UA, UA_DESKTOP } from "./guard.mjs";
+import net from "node:net";
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function renderAudit(browser, url, { budgetMs = 50000, now = Date.now() } = {}) {
+  const t0 = Date.now();
+  const left = () => budgetMs - (Date.now() - t0);
+  const page = await browser.newPage();
+  const net404 = [];
+  const notes = [];
+  try {
+    await page.setBypassCSP(true);
+    await page.setUserAgent(UA);
+    await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+    await page.setRequestInterception(true);
+    page.on("request", async (req) => {
+      try {
+        const u = new URL(req.url());
+        if (u.protocol === "data:" || u.protocol === "blob:") return req.continue();
+        if (!/^https?:$/.test(u.protocol)) return req.abort();
+        const h = u.hostname.replace(/^\[|\]$/g, "");
+        if (process.env.HS_ALLOW_LOCAL !== "1") {
+          if (/^localhost$/i.test(h) || (net.isIP(h) && isPrivateIp(h))) return req.abort();
+          if (req.isNavigationRequest() && req.frame() === page.mainFrame()) await assertPublicHost(h);
+        }
+        // skip heavy media we never look at
+        if (["media", "websocket", "eventsource"].includes(req.resourceType())) return req.abort();
+        return req.continue();
+      } catch { try { req.abort(); } catch {} }
+    });
+    page.on("response", (res) => {
+      const rt = res.request().resourceType();
+      if (rt === "image" && (res.status() === 404 || res.status() === 410)) net404.push(res.url());
+    });
+    page.on("dialog", (d) => d.dismiss().catch(() => {}));
+
+    let resp;
+    try {
+      resp = await page.goto(url, { waitUntil: "networkidle2", timeout: Math.min(25000, left() - 15000) });
+    } catch (e) {
+      if (/timeout/i.test(e.message)) { notes.push("slow-load"); resp = null; }
+      else throw e;
+    }
+    const mainStatus = resp ? resp.status() : 0;
+    const hdrs = resp ? resp.headers() : {};
+    if (mainStatus >= 400) {
+      return { ok: false, status: mainStatus, finalUrl: page.url(), error: "status" };
+    }
+
+    // scroll to trigger lazy content, then back to top
+    await page.evaluate(async (limitMs) => {
+      const s = Date.now();
+      let y = 0;
+      const max = Math.min(document.documentElement.scrollHeight, 16000);
+      while (y < max && Date.now() - s < limitMs) { y += 700; window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); }
+      window.scrollTo(0, 0);
+    }, Math.min(5000, Math.max(1000, left() - 30000)));
+    await sleep(700);
+
+    await page.evaluate(`window.__hsTR = (${makeTextRules.toString()})()`);
+    const audit = await page.evaluate(pageAudit, { now, mobile: true, deviceWidth: 390 });
+    const mobileFold = await page.evaluate(foldCta, { w: 390, h: 844 });
+
+    // full-page mobile screenshot (capped) for pinpointing findings
+    const shotH = Math.min(audit.docH, 9000);
+    let mobileShot = null;
+    try {
+      const buf = await page.screenshot({ type: "jpeg", quality: 55, clip: { x: 0, y: 0, width: 390, height: shotH }, captureBeyondViewport: true });
+      mobileShot = { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 390, h: shotH };
+    } catch (e) { notes.push("shot-failed"); }
+
+    // try every "#" link: does clicking it actually do anything?
+    const deadLinks = [];
+    let navigated = false;
+    const baseUrl = page.url().replace(/#.*$/, "");
+    const onNav = (fr) => { if (fr === page.mainFrame() && fr.url().replace(/#.*$/, "") !== baseUrl) navigated = true; };
+    page.on("framenavigated", onNav);
+    for (const c of audit.hashCandidates) {
+      if (left() < 22000 || navigated) break;
+      let r;
+      try {
+        r = await page.evaluate(async (id) => {
+          const el = document.querySelector('[data-hs-hash="' + id + '"]');
+          if (!el) return { gone: true };
+          el.scrollIntoView({ block: "center" });
+          await new Promise((s) => setTimeout(s, 200));
+          const noisy = new Set();
+          let obs = new MutationObserver((ms) => ms.forEach((m) => noisy.add(m.target)));
+          obs.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+          await new Promise((s) => setTimeout(s, 500));
+          obs.disconnect();
+          const isNoisy = (t) => { for (const x of noisy) if (x === t || (x.contains && x.contains(t))) return true; return false; };
+          let effects = 0;
+          obs = new MutationObserver((ms) => ms.forEach((m) => { if (m.target !== el && !el.contains(m.target) && !isNoisy(m.target)) effects++; }));
+          obs.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+          let opened = false; const oo = window.open; window.open = function () { opened = true; return null; };
+          const before = location.href.replace(/#.*$/, "");
+          el.click();
+          await new Promise((s) => setTimeout(s, 700));
+          obs.disconnect(); window.open = oo;
+          return { effects, opened, nav: location.href.replace(/#.*$/, "") !== before };
+        }, c.id);
+      } catch { navigated = true; break; }
+      if (r && !r.gone && !r.effects && !r.opened && !r.nav && !navigated) deadLinks.push(c);
+    }
+    page.off("framenavigated", onNav);
+
+    // desktop pass: first-screen call to action + screenshot
+    let desktopFold = null, desktopShot = null;
+    if (left() > 14000) {
+      try {
+        await page.setUserAgent(UA_DESKTOP);
+        await page.setViewport({ width: 1366, height: 800, isMobile: false, hasTouch: false, deviceScaleFactor: 1 });
+        if (navigated) await page.goto(url, { waitUntil: "networkidle2", timeout: Math.min(15000, left() - 6000) }).catch(() => {});
+        await sleep(900);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        desktopFold = await page.evaluate(foldCta, { w: 1366, h: 800 });
+        const buf = await page.screenshot({ type: "jpeg", quality: 60 });
+        desktopShot = { data: "data:image/jpeg;base64," + Buffer.from(buf).toString("base64"), w: 1366, h: 800 };
+      } catch { notes.push("desktop-failed"); }
+    }
+
+    return {
+      ok: true, status: mainStatus, finalUrl: audit.url, https: audit.url.startsWith("https:"),
+      xRobots: hdrs["x-robots-tag"] || "", audit, mobileFold, desktopFold, deadLinks, net404: [...new Set(net404)].slice(0, 20),
+      shots: { mobile: mobileShot, desktop: desktopShot }, ms: Date.now() - t0, notes
+    };
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
