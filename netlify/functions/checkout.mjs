@@ -40,6 +40,7 @@ export default async (req) => {
     });
     return json({ url: session.url });
   } catch (e) {
+    console.error("checkout-failed", plan, interval, String(e && e.message).slice(0, 300));
     return json({ error: /not-configured/.test(e.message) ? "Payments aren't switched on yet." : "Checkout couldn't start. Try again in a minute." }, 502);
   }
 };
