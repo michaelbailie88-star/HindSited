@@ -40,6 +40,11 @@
   status = 200
 
 [[redirects]]
+  from = "/fix/*"
+  to = "/fix.html"
+  status = 200
+
+[[redirects]]
   from = "/pricing"
   to = "/index.html"
   status = 200
@@ -82,6 +87,11 @@
 
 [[headers]]
   for = "/account"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/fix/*"
   [headers.values]
     X-Frame-Options = "DENY"
 

@@ -182,8 +182,25 @@ const cB = await b.createBrowserContext(); const o = await page(cB);
 await signUp(o, BASE, { email: "michaelbailie88@icloud.com", name: "Michael Bailie", business: "The Lazy Creator Company", website: "thelazycreatorcompany.com" });
 await o.waitForSelector(".dash");
 await o.goto(BASE + "/r/" + freeId); await o.waitForSelector(".rep-head", { timeout: 20000 });
+// give the report a long domain + registrar so "About your website" is tested at its widest
+{ const store = await import("../netlify/lib/store.mjs"); const r = await store.reports().get(freeId, { type: "json" });
+  r.scan.render.audit.signals.platform = "Squarespace";
+  r.scan.domain = { name: "cedar-bakery-and-cafe-on-main-street.com", registrar: "Network Solutions, LLC", created: "2014-03-01T00:00:00.000Z", expires: new Date(Date.now() + 30 * 864e5).toISOString() };
+  await store.reports().setJSON(freeId, r); }
+await o.reload(); await o.waitForSelector(".rep-head", { timeout: 20000 });
 await o.evaluate(() => document.querySelectorAll("details.cat").forEach((d) => (d.open = true)));
 await check(o, "report-full");
+// fix guide: every step
+await o.goto(BASE + "/fix/" + freeId); await o.waitForSelector(".fx-card"); await check(o, "fix-platform");
+if (!/built on Squarespace/.test(await o.evaluate(() => document.body.innerText))) { problems++; console.log("✗ fix guide named the wrong platform for a Squarespace site"); }
+await o.click('.fx-choice[data-p="Shopify"]'); await check(o, "fix-platform-picked");
+await o.click("#next"); await o.waitForSelector("#in"); await check(o, "fix-login");
+await o.click("#cant"); await o.waitForSelector(".fx-dead"); await check(o, "fix-recover");
+await o.click("#in"); await o.waitForSelector("#doneForm"); await check(o, "fix-invite");
+await o.click("[data-stuck]"); await o.waitForSelector(".fx-stuck-form"); await check(o, "fix-stuck");
+await o.click('#doneForm button[type=submit]'); await o.waitForSelector("#doneForm .form-err:not([hidden])"); await check(o, "fix-invite-error");
+await o.type('#doneForm input[name=code]', "4821"); await o.click('#doneForm input[name=sent]'); await o.click('#doneForm button[type=submit]'); await o.waitForSelector(".fx-final"); await check(o, "fix-done");
+await c.goto(BASE + "/fix/" + freeId); await c.waitForFunction(() => /part of the paid plans/.test(document.body.innerText)); await check(c, "fix-free-account");
 await scanTo(o, "127.0.0.1:9"); await o.waitForSelector(".err-box", { timeout: 120000 }); await check(o, "scan-error");
 await c.goto(BASE + "/account#review"); await c.waitForSelector("#revForm");
 await c.click(".star-pick label:nth-of-type(4)"); await c.type('#revForm textarea[name="text"]', "Really useful. Found things on our site we never would have spotted ourselves.");

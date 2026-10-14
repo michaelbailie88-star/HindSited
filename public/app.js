@@ -393,7 +393,7 @@ async function showReport(report, scan, meta = {}) {
 
   html += meta.brand
     ? `<div class="cta"><div><h3>Want these fixed?</h3><p>${esc(meta.brand.name)} can take care of every issue in this report.${meta.brand.site ? ` <span class="print-only">${esc(meta.brand.site.replace(/^https?:\/\//, ""))}</span>` : ""}</p></div>${meta.brand.site ? `<a class="btn" href="${esc(meta.brand.site)}" target="_blank" rel="noopener">Get in touch</a>` : ""}</div>`
-    : offersHtml({ locked, paidViewer: !!(me.signedIn && me.plan !== "free"), all });
+    : offersHtml({ locked, paidViewer: !!(me.signedIn && me.plan !== "free"), all, id: meta.id });
   html += `<div class="again no-print"><button id="again">Check another site</button></div></div>`;
 
   const rep = $("#report");
@@ -415,7 +415,7 @@ async function showReport(report, scan, meta = {}) {
 }
 
 // ---------------------------------------------------------------- offers on every report
-function offersHtml({ locked, paidViewer, all }) {
+function offersHtml({ locked, paidViewer, all, id }) {
   const fixReady = paidViewer && !locked;
   return `<div class="offers no-print" id="offers">
     <div class="offers-head"><p class="eyebrow">Want these fixed?</p><h3>Two ways I can fix this for you</h3>
@@ -431,11 +431,10 @@ function offersHtml({ locked, paidViewer, all }) {
       </article>
       <article class="offer">
         <p class="offer-k">Option 2</p><h4>Fix It: keep your site, fix ${all ? "all " + all + " issue" + (all === 1 ? "" : "s") : "the issues"}</h4>
-        <p>Subscribe to HindSited and I'll fix the issues in this report for you. You also get monthly checks, so new problems are caught before customers notice.</p>
-        <ul class="ticks"><li>Every hidden issue revealed straight away</li><li>Fixes done for you, from this exact report</li><li>Re-check any time to see the score go up</li></ul>
+        <p>Subscribe and I'll fix this report, including setting up your reviews and an instant-quote button on your site. You also get monthly checks, so new problems are caught before customers notice.</p>
+        <ul class="ticks"><li>Every hidden issue revealed straight away</li><li>Fixes done for you, from this exact report</li><li>A step-by-step guide gets your site ready in about 10 minutes, no passwords shared</li><li>Re-check any time to see the score go up</li></ul>
         <p class="offer-price">From <b>$19</b>/month or <b>$299</b> once</p>
-        <div class="offer-act">${fixReady ? `<button class="btn" type="button" data-req="fix">Send this report to be fixed</button>` : `<button class="btn" type="button" data-fixit>Fix It</button>`}</div>
-        <div class="req" data-for="fix" hidden></div>
+        <div class="offer-act">${fixReady && id ? `<a class="btn" href="/fix/${esc(id)}">Get this report fixed</a>` : `<button class="btn" type="button" data-fixit>Fix It</button>`}</div>
       </article>
     </div></div>`;
 }

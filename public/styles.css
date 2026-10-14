@@ -791,3 +791,47 @@ label.check input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
 .site-facts dt { font: 700 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
 .site-facts dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 .small-note { font-size: 14px; margin-top: 10px !important; }
+
+/* ---------------- Fix It guide ---------------- */
+.fixg { padding: 36px 0 72px; }
+.fx-h { font: 850 clamp(28px, 5vw, 42px)/1.05 var(--display); font-stretch: 106%; letter-spacing: -.015em; margin: 0 0 8px; }
+.fx-site { margin: 0 0 4px; color: var(--ink-2); font-size: 15px; display: flex; flex-wrap: wrap; gap: 0 4px; align-items: baseline; min-width: 0; }
+.fx-site .one-line { max-width: 60vw; font-weight: 700; }
+.fx-lead { margin: 0 0 18px; font-size: 15px; }
+.fx-prog { list-style: none; padding: 0; margin: 0 0 18px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; counter-reset: none; }
+.fx-prog li { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font: 600 13px/1.2 var(--body); color: var(--muted); min-width: 0; }
+.fx-prog li span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--line); background: var(--card); font-weight: 800; color: var(--muted); }
+.fx-prog li.now { color: var(--ink); }
+.fx-prog li.now span { border-color: var(--mark); color: var(--mark); }
+.fx-prog li.done span { background: var(--ok); border-color: var(--ok); color: #fff; }
+.fx-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 24px 20px; box-shadow: var(--shadow); }
+@media (min-width: 720px) { .fx-card { padding: 32px 36px; } }
+.fx-card h2 { font: 850 clamp(22px, 4vw, 30px)/1.1 var(--display); font-stretch: 106%; margin: 0 0 12px; }
+.fx-card h3 { font: 800 17px/1.3 var(--body); margin: 20px 0 6px; }
+.fx-card p { color: var(--ink-2); }
+.fx-k { font: 700 12.5px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--mark) !important; margin: 0 0 8px; }
+.fx-big { font-size: 19px; color: var(--ink) !important; margin: 0 0 4px; }
+.fx-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
+.fx-choice { font: 600 15px/1 var(--body); padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; cursor: pointer; color: var(--ink); }
+.fx-choice.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 800; }
+.fx-act { display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+.fx-act .btn:disabled { opacity: .45; cursor: not-allowed; }
+.fx-steps { padding-left: 22px; margin: 10px 0; color: var(--ink-2); display: grid; gap: 8px; }
+.fx-steps li { padding-left: 4px; overflow-wrap: anywhere; }
+.fx-mail { color: var(--ink); white-space: nowrap; }
+.fx-copy { font-size: 13px; margin-left: 4px; }
+.fx-emails { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 6px; }
+.fx-emails li { background: var(--paper); border-radius: 9px; padding: 9px 12px; font-weight: 600; min-width: 0; }
+.fx-emails li.muted { background: none; padding: 0 2px; font-weight: 400; font-size: 14px; }
+.fx-tip { background: var(--amber-soft); color: #5c3700 !important; border-radius: 10px; padding: 12px 14px; font-size: 15px; }
+.fx-stuck { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
+.fx-stuck-form { display: grid; gap: 10px; margin-top: 10px; }
+.fx-stuck-form label, .fx-done-form label:not(.check) { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; min-width: 0; }
+.fx-stuck-form textarea, .fx-done-form textarea, .fx-done-form input:not([type=checkbox]) { font: 400 16px/1.4 var(--body); padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; width: 100%; }
+.fx-stuck-form .btn { justify-self: start; }
+.fx-done-form { display: grid; gap: 12px; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
+.fx-done-form input[name=code] { max-width: 160px; font: 700 20px/1 var(--mono); letter-spacing: .2em; }
+.fx-dead { margin-top: 22px; background: var(--paper); border-radius: 14px; padding: 16px 18px; }
+.fx-dead h3 { margin-top: 0; }
+.fx-dead .btn { white-space: normal; max-width: 100%; text-align: center; }
+.fx-final .btn { text-decoration: none; }

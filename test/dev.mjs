@@ -10,7 +10,7 @@ process.env.HS_LOCAL_MAIL = "1";
 globalThis.Netlify = { env: { get: (k) => process.env[k] } };
 const load = async (f) => (await import("../netlify/functions/" + f + ".mjs"));
 const mods = {};
-for (const f of ["auth", "account", "request", "reviews", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message", "calc", "calc-lead", "calc-leads"]) mods[f] = await load(f);
+for (const f of ["auth", "account", "request", "reviews", "fix", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message", "calc", "calc-lead", "calc-leads"]) mods[f] = await load(f);
 const routes = {};
 for (const m of Object.values(mods)) { const p = m.config.path; (Array.isArray(p) ? p : [p]).forEach((x) => (routes[x] = m)); }
 export const { outbox } = await import("../netlify/lib/mail.mjs");
@@ -33,6 +33,7 @@ export function startDev(port = 8100) {
       let f = path.join(pub, p === "/" ? "index.html" : p);
       if (/^\/(r\/|account|reset|pricing)/.test(p)) f = path.join(pub, "index.html");
       if (["/privacy", "/terms", "/cancel"].includes(p)) f = path.join(pub, p.slice(1) + ".html");
+      if (p.startsWith("/fix/")) f = path.join(pub, "fix.html");
       if (p === "/reviews") f = path.join(pub, "booster.html");
       if (p.startsWith("/review/")) f = path.join(pub, "review.html");
       if (p === "/quotes") f = path.join(pub, "quotes.html");

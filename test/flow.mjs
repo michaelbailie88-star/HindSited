@@ -107,7 +107,7 @@ await signUp(o, BASE, { email: "thelazycreatorco@gmail.com", name: "Michael Bail
 await o.goto(BASE + "/r/" + id); await o.waitForSelector(".rep-head", { timeout: 20000 });
 t = await text(o);
 ok(!(await o.$(".lock-bar")) && /Your top 5 fixes/.test(t) && !!(await o.$("#savePdf")), "a paid/owner viewer sees the full report");
-ok(/Send this report to be fixed/.test(t), "paid viewers get 'Send this report to be fixed'");
+ok(/Get this report fixed/.test(t), "paid viewers get 'Get this report fixed'");
 await scan(o, "127.0.0.2:8102"); await scan(o, "127.0.0.2:8102");
 ok(!!(await o.$(".rep-head")) && !(await o.$(".lock-bar")), "owner can run repeated checks, always full");
 await o.goto(BASE + "/account"); await o.waitForSelector(".dash-list.reports");

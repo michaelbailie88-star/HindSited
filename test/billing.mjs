@@ -48,7 +48,7 @@ ok(new URL(p.url()).pathname === "/r/" + rid && /Unlock your full report/.test(a
 await Promise.all([p.waitForNavigation(), p.click('[data-plan="solo"][data-int="month"]')]);
 await p.waitForSelector(".rep-head", { timeout: 60000 });
 ok(new URL(p.url()).pathname === "/r/" + rid && !(await p.$(".lock-bar")) && /Your top 5 fixes/.test(await text(p)), "after paying they return to the same report, now fully unlocked");
-ok(/Send this report to be fixed/.test(await text(p)), "Fix It now sends the report to be fixed");
+ok(/Get this report fixed/.test(await text(p)), "Fix It now leads to the fix guide");
 ok(state.sessions["cs_test_0x"].price === "price_solo_m" && /back=%2Fr%2F/.test(state.sessions["cs_test_0x"].success_url), "checkout used the Solo monthly price and returns to the report");
 let t = await dash();
 ok(/Solo/.test(t) && /Renews/.test(t) && /30 left|29 left/.test(t), "dashboard shows Solo, its renewal date and checks left");
