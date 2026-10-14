@@ -375,6 +375,19 @@ async function showReport(report, scan, meta = {}) {
     html += `<div class="rep-sec"><h3>What's working</h3><p class="sub">${report.passed.length} checks your site passed.</p><div class="pass-grid">${report.passed.map((p) => `<div class="pass">${esc(p.text)}</div>`).join("")}</div></div>`;
   }
 
+  // about the website: platform + domain (useful when it's time to fix things)
+  const dm = scan.domain;
+  if (report.platform || dm) {
+    const days = dm && dm.expires ? Math.round((Date.parse(dm.expires) - Date.now()) / 86400000) : null;
+    const fmt = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    html += `<div class="rep-sec"><h3>About your website</h3><dl class="site-facts">
+      ${report.platform ? `<div><dt>Built with</dt><dd>${esc(report.platform)}</dd></div>` : ""}
+      ${dm && dm.registrar ? `<div><dt>Domain registered with</dt><dd>${esc(dm.registrar)}</dd></div>` : ""}
+      ${dm && dm.expires ? `<div><dt>Domain renews</dt><dd>${fmt(dm.expires)}${days != null && days <= 60 ? ` <span class="chip ${days <= 14 ? "now" : "soon"}">${days < 0 ? "expired" : "in " + days + " day" + (days === 1 ? "" : "s")}</span>` : ""}</dd></div>` : ""}
+      ${dm && dm.created ? `<div><dt>Domain since</dt><dd>${new Date(dm.created).getFullYear()}</dd></div>` : ""}
+    </dl><p class="sub small-note">Good to know before anyone works on your site: this is where it's edited and who controls the address.</p></div>`;
+  }
+
   const okPages = (scan.pages || []).filter((p) => p.status >= 200 && p.status < 300);
   html += `<div class="rep-sec"><h3>Pages we read</h3><ol class="pages-list"><li>${esc(pagePath(scan.render.finalUrl))}</li>${okPages.map((p) => `<li>${esc(pagePath(p.finalUrl || p.url))}</li>`).join("")}</ol></div>`;
 

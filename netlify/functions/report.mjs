@@ -54,7 +54,8 @@ export default async (req) => {
   const lite = {
     render: { finalUrl: R.finalUrl, https: R.https, shots: R.shots, audit: { title: R.audit && R.audit.title, desc: R.audit && R.audit.desc } },
     pages: (scan.pages || []).map((p) => ({ url: p.url, finalUrl: p.finalUrl, status: p.status })),
-    speed: speedHidden ? { locked: true } : scan.speed || {}
+    speed: speedHidden ? { locked: true } : scan.speed || {},
+    domain: scan.domain || null
   };
   return json({
     ...pub, mine, free, locked: true, scan: lite,

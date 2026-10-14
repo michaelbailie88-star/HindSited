@@ -6,6 +6,7 @@ import { normalizeUrl, assertPublicHost } from "../lib/guard.mjs";
 import { reports, appSecret, getUser, saveUser } from "../lib/store.mjs";
 import { buildReport } from "../../public/rules.js";
 import { refund } from "../lib/refund.mjs";
+import { domainInfo } from "../lib/domain.mjs";
 
 export default async (req) => {
   if (req.headers.get("x-hs-key") !== (await appSecret())) return;
@@ -29,7 +30,9 @@ export default async (req) => {
     await save({ state: "running", stages });
     browser = await launchBrowser();
     log("browser");
+    const dom = domainInfo(keep.site).catch(() => null); // runs alongside the scan
     const out = await fullScan(browser, u.href, { psiKey: Netlify.env.get("PSI_KEY"), log });
+    if (out.scan) out.scan.domain = await dom;
     if (out.error) {
       const st = out.render && out.render.status;
       await save({ state: "error", stages, error: st ? `The site answered with error ${st}, so there was nothing to check.` : "The site didn't load." });
