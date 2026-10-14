@@ -27,7 +27,7 @@ export default async (req) => {
   const r = price(c.config, answers);
   const quote = priceText(r, c.config);
   const id = new Date().toISOString().replace(/[:.]/g, "-") + "-" + crypto.randomBytes(3).toString("hex");
-  const lead = { id, at: new Date().toISOString(), name, email, phone, note, quote, low: r.low, high: r.high, lines: r.lines, page: String(b.page || "").slice(0, 300) };
+  const lead = { id, at: new Date().toISOString(), name, email, phone, note, quote, low: r.none ? "" : r.low, high: r.none ? "" : r.high, lines: r.lines, page: String(b.page || "").slice(0, 300) };
   await leads().setJSON(slug + "/" + id, lead);
   const rows = r.lines.map((l) => `<tr><td style="padding:4px 10px 4px 0;color:#676b74">${esc(l.q)}</td><td style="padding:4px 0">${esc(l.a)}</td></tr>`).join("");
   try {
@@ -43,8 +43,8 @@ export default async (req) => {
   if (st.paid && c.followUp !== false && email) {
     try {
       await sendMail({ to: email, subject: `Your quote from ${c.business}`,
-        text: `Hi ${name},\n\nThanks for your interest in ${c.business}. Based on your answers, your estimate is ${quote}.\n\n${r.lines.map((l) => `${l.q}: ${l.a}`).join("\n")}\n\nWe'll be in touch shortly to confirm the details and an exact price.${c.phone ? `\n\nWant to talk sooner? Call ${c.phone}.` : ""}\n\n${c.business}`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#14161b"><p>Hi ${esc(name)},</p><p>Thanks for your interest in ${esc(c.business)}. Based on your answers, your estimate is:</p><p style="font-size:24px;font-weight:800">${esc(quote)}</p><table style="font-size:14px">${rows}</table><p>We'll be in touch shortly to confirm the details and an exact price.${c.phone ? ` Want to talk sooner? Call <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>.` : ""}</p><p>${esc(c.business)}</p></div>` });
+        text: `Hi ${name},\n\nThanks for your interest in ${c.business}. ${r.none ? "We've received your request:" : `Based on your answers, your estimate is ${quote}.`}\n\n${r.lines.map((l) => `${l.q}: ${l.a}`).join("\n")}\n\n${r.none ? "We'll be in touch shortly with your quote." : "We'll be in touch shortly to confirm the details and an exact price."}${c.phone ? `\n\nWant to talk sooner? Call ${c.phone}.` : ""}\n\n${c.business}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#14161b"><p>Hi ${esc(name)},</p><p>Thanks for your interest in ${esc(c.business)}. ${r.none ? "We've received your request:" : "Based on your answers, your estimate is:"}</p>${r.none ? "" : `<p style="font-size:24px;font-weight:800">${esc(quote)}</p>`}<table style="font-size:14px">${rows}</table><p>${r.none ? "We'll be in touch shortly with your quote." : "We'll be in touch shortly to confirm the details and an exact price."}${c.phone ? ` Want to talk sooner? Call <a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>.` : ""}</p><p>${esc(c.business)}</p></div>` });
     } catch {}
   }
   return json({ sent: true, quote });

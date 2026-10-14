@@ -26,17 +26,30 @@ async function joinHere(pg, email, name, business) {
   await Promise.all([pg.waitForNavigation(), pg.click(".auth-go")]);
 }
 await p.goto(BASE + "/quotes"); await joinHere(p, "jo@bright-spark.com", "Jo Bright", "Bright Spark Cleaning");
-await p.waitForSelector(".tpl", { timeout: 15000 });
+await p.waitForSelector("#svcList .row-ed", { timeout: 15000 });
 ok(new URL(p.url()).pathname === "/quotes", "creating an account on Quote Calculator returns to Quote Calculator");
-await p.click('.tpl[data-k="cleaning"]');
+const svc0 = await p.$eval('#svcList .row-ed input[data-f="label"]', (e) => e.value);
+ok(svc0 === "Standard clean" && (await p.$eval("#bType", (e) => e.value)) === "Cleaning" && (await p.$eval("#bBiz", (e) => e.value)) === "Bright Spark Cleaning", "a cleaning business starts with cleaning examples, filled from the account");
 await p.waitForSelector("#prev .calc-amount");
 const first = await p.$eval("#prev .calc-amount", (e) => e.textContent);
 ok(/^\$\d/.test(first), "live preview shows a price: " + first);
-await p.type("#bBiz", "Bright Spark Cleaning");
-// change starting price -> preview updates
-await p.$eval("#bBase", (e) => { e.value = "100"; e.dispatchEvent(new Event("input", { bubbles: true })); });
+// change the first service price -> preview updates
+await p.$eval('#svcList .row-ed input[data-f="price"]', (e) => { e.value = "150"; e.dispatchEvent(new Event("input", { bubbles: true })); });
 const after = await p.$eval("#prev .calc-amount", (e) => e.textContent);
 ok(after !== first, "editing a price updates the preview (" + first + " -> " + after + ")");
+// after editing, typing a different business type offers examples instead of overwriting
+await p.$eval("#bType", (e) => (e.value = "")); await p.type("#bType", "dog grooming"); await p.$eval("#bType", (e) => e.dispatchEvent(new Event("change")));
+ok(/Use examples/.test(await p.$eval("#typeHint", (e) => e.innerText)) && (await p.$eval('#svcList .row-ed input[data-f="label"]', (e) => e.value)) === "Standard clean", "after edits, a new business type offers examples without overwriting");
+await p.$eval("#bType", (e) => (e.value = "Cleaning"));
+// no-price mode: a request form, no price anywhere
+await p.click('input[name="bMode"][value="none"]');
+ok(!(await p.$("#prev .calc-amount")) && /Send my request/.test(await p.$eval("#prev", (e) => e.innerText)) && !(await p.$("#svcList .price-in:not([hidden])")), "'No price' turns it into a request form and hides prices");
+await p.click('input[name="bMode"][value="range"]');
+ok(!!(await p.$("#prev .calc-amount")), "switching back to a range shows the price again");
+// add and remove an add-on
+const nAdd = (await p.$$("#addList .row-ed")).length;
+await p.click("#addAdd"); await p.click("#addList .row-ed:last-child [data-del]");
+ok((await p.$$("#addList .row-ed")).length === nAdd, "add-ons can be added and removed");
 await p.screenshot({ path: out("p5-builder.png"), fullPage: true });
 await p.click("#bSave");
 await p.waitForSelector("#emb", { timeout: 15000 });
@@ -50,9 +63,9 @@ await p.screenshot({ path: out("p5-dashboard.png"), fullPage: true });
 const c2 = await b.createBrowserContext(); const q = await c2.newPage(); await q.setViewport({ width: 400, height: 860 });
 q.on("pageerror", (e) => errors.push(e.message));
 await q.goto(BASE + "/q/" + slug); await q.waitForSelector(".calc-amount");
-await q.click('[data-step="1"][data-q="q1"]'); // 3 bedrooms
-await q.click('input[name="q3"][value="1"]');   // deep clean
-await q.click('input[data-q="q5"][value="0"]');  // oven
+await q.click('[data-step="1"]');                          // 3 bedrooms
+await q.click('input[data-k="service"][value="1"]');       // deep clean
+await q.click('input[data-k="addons"][value="0"]');        // oven
 const shown = await q.$eval(".calc-amount", (e) => e.textContent);
 await q.type('input[name="name"]', "Avery Lee"); await q.type('input[name="email"]', "avery@example-home.com");
 await q.click(".calc-btn"); await q.waitForSelector(".calc-done", { timeout: 10000 });
@@ -64,7 +77,7 @@ const sw = await q.evaluate(() => [document.documentElement.scrollWidth, innerWi
 ok(sw[0] <= sw[1], "public calculator fits a phone");
 
 // a tampered request can't change the price
-const r = await fetch(BASE + "/api/calc-lead", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, name: "Hacker", email: "h@example-x.com", answers: { q1: 3, q3: 1, q5: [0] }, quote: "$1", low: 1 }) });
+const r = await fetch(BASE + "/api/calc-lead", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, name: "Hacker", email: "h@example-x.com", answers: { service: 1, qty: 3, addons: [0] }, quote: "$1", low: 1 }) });
 const rj = await r.json();
 ok(rj.quote === shown, "server recomputes the price (" + rj.quote + ")");
 
@@ -72,7 +85,7 @@ ok(rj.quote === shown, "server recomputes the price (" + rj.quote + ")");
 await p.reload(); await p.waitForSelector(".lead-table");
 ok((await p.$$(".lead-table tbody tr")).length === 2, "leads appear in the dashboard");
 const csv = await p.evaluate(async (s) => (await fetch("/api/calc-leads?slug=" + s + "&format=csv")).text(), slug);
-ok(csv.includes("Avery Lee") && csv.split("\n")[0].includes("Bedrooms"), "CSV download has leads and answers");
+ok(csv.includes("Avery Lee") && csv.split("\n")[0].includes("How many bedrooms?"), "CSV download has leads and answers");
 
 // embed on another site
 const host = http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end(`<!doctype html><h1>Client site</h1><script src="${BASE}/embed.js" data-calc="${slug}" async></script>`); }).listen(8150, "127.0.0.1");

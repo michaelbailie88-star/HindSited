@@ -167,9 +167,9 @@ await c.type("#kName", "Cedar Bakery and Café on Main Street"); await c.type("#
 await c.click("#kitForm button[type=submit]"); await c.waitForSelector("#mats .mat", { timeout: 15000 });
 await c.type("#aFirst", "Dana"); await check(c, "booster-dashboard-free");
 await c.click("#addKit"); await c.waitForSelector(".plans, #pwBack"); await check(c, "booster-paywall");
-await c.goto(BASE + "/quotes"); await c.waitForSelector(".tpl"); await check(c, "quotes-templates");
-await c.click('.tpl[data-k="cleaning"]'); await c.waitForSelector("#prev .calc-amount"); await check(c, "quotes-builder");
-await c.type("#bBiz", "Cedar Cleaning Co."); await c.click("#bSave"); await c.waitForSelector("#emb", { timeout: 15000 });
+await c.goto(BASE + "/quotes"); await c.waitForSelector("#svcList .row-ed"); await check(c, "quotes-builder");
+await c.click('input[name="bMode"][value="none"]'); await check(c, "quotes-builder-noprice"); await c.click('input[name="bMode"][value="range"]');
+await c.$eval("#bBiz", (e) => (e.value = "")); await c.type("#bBiz", "Cedar Cleaning Co."); await c.click("#bSave"); await c.waitForSelector("#emb", { timeout: 15000 });
 await check(c, "quotes-dashboard-free");
 const qslug = (await c.evaluate(() => document.body.innerText)).match(/\/q\/([a-z0-9-]+)/)[1];
 if (await c.$("#cNew")) { await c.click("#cNew"); await c.waitForSelector(".plans, #pwBack", { timeout: 8000 }).catch(() => {}); await check(c, "quotes-paywall"); }

@@ -39,7 +39,7 @@ export default async (req) => {
   const business = String(b.business || "").replace(/[<>]/g, "").trim().slice(0, 60);
   if (!business) return json({ error: "Enter your business name." }, 400);
   const config = sanitize(b.config || {});
-  if (!config.questions.length) return json({ error: "Add at least one question." }, 400);
+  if (!config.services.length) return json({ error: "Add at least one service." }, 400);
   const user = (await getUser(email)) || newUser(email);
   const ent = effectivePlan(user, email);
   const paid = ent.plan !== "free";

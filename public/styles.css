@@ -751,3 +751,38 @@ details.set.danger summary { color: #a32a0c; }
 .tools-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .tools-head p { margin: 0; }
 .tools-head .sub-h { margin: 6px 0 0; }
+
+/* ---------------- quote calculator builder (3 steps) ---------------- */
+.b-h { margin-bottom: 18px; }
+.b-hint { margin: -4px 0 0; font-size: 14px; color: var(--ok); background: var(--ok-soft); border-radius: 10px; padding: 10px 12px; }
+.b-step { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 18px; }
+.b-sh { font: 800 19px/1.2 var(--display); margin: 0 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.b-sh > span:not(.opt) { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 14px; flex: none; }
+.b-sh .opt { font: 400 14px/1 var(--body); color: var(--muted); }
+.row-list { display: grid; gap: 8px; margin: 10px 0 6px; }
+.row-ed { display: grid; grid-template-columns: minmax(0, 1fr) 120px 34px; gap: 8px; align-items: center; }
+.row-ed input { font: 400 16px/1.3 var(--body); padding: 10px 11px; border: 1.5px solid var(--line); border-radius: 9px; background: #fff; width: 100%; min-width: 0; }
+.price-in { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.price-in span { font-weight: 700; color: var(--ink-2); font-size: 15px; }
+.price-in[hidden] { display: none; }
+.row-ed:has(.price-in[hidden]) { grid-template-columns: minmax(0, 1fr) 34px; }
+@media (max-width: 480px) { .row-ed { grid-template-columns: minmax(0, 1fr) 34px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); } .row-ed input[data-f="label"] { grid-column: 1 / -1; } .row-ed:has(.price-in[hidden]) input[data-f="label"] { grid-column: auto; } }
+label.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; font-size: 15px; margin: 8px 0; }
+label.check input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.qty-ed { display: grid; gap: 10px; margin-top: 8px; }
+.qty-ed > label { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; }
+.qty-ed input:not([type=checkbox]) { font: 400 16px/1.3 var(--body); padding: 10px 11px; border: 1.5px solid var(--line); border-radius: 9px; background: #fff; width: 100%; min-width: 0; }
+.qty-ed .row4 label[hidden] { display: none; }
+.mode-pick { display: grid; gap: 8px; margin: 10px 0 12px; }
+.mode-pick label { display: flex; gap: 12px; align-items: flex-start; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #fff; }
+.mode-pick label:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.mode-pick input { width: 18px; height: 18px; margin-top: 2px; flex: none; }
+.mode-pick span { display: grid; gap: 2px; font-size: 14px; color: var(--ink-2); }
+.mode-pick b { font-size: 15.5px; color: var(--ink); }
+.mode-extra label[hidden] { display: none; }
+.opt-price { color: var(--muted); font-weight: 600; white-space: nowrap; }
+.mode-extra label { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; }
+.mode-extra select, .mode-extra input { font: 400 16px/1.3 var(--body); padding: 10px 11px; border: 1.5px solid var(--line); border-radius: 9px; background: #fff; width: 100%; min-width: 0; }
+.opt span.opt-price { display: inline; border: 0; background: none; padding: 0; font-size: inherit; }
+.qty-ed > label.check { display: flex; font-weight: 500; }
+@media (min-width: 640px) { .qty-ed .row4 { grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); } }
