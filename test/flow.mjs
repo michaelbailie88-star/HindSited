@@ -41,7 +41,7 @@ const id = new URL(p.url()).pathname.split("/").pop();
 let t = await text(p);
 ok(!!(await p.$(".rep-head")) && /Free report: showing \d+ of \d+ issues/.test(t), "free scan runs with no account and shows the free report");
 ok((await p.$$(".locked-card")).length > 0 && !(await p.$("#savePdf")), "most serious issues are shown as locked cards; no PDF on free reports");
-ok(!!(await p.$("#offers")) && /Request a redesign/.test(t) && /Fix It/.test(t), "report offers both a redesign and Fix It");
+ok(!!(await p.$("#offers")) && /Start my new website/.test(t) && /From \$500/.test(t) && !/Fix It|I'll fix/.test(t), "report offers one thing: a new website (no 'I'll fix it' promise)");
 await p.screenshot({ path: out("p2-free-report.png"), fullPage: true });
 
 // ---- the lock is enforced on the server
@@ -90,8 +90,6 @@ await r.type('.req-form textarea[name="note"]', "Need a new site before spring."
 await r.click(".req-form button[type=submit]"); await r.waitForFunction(() => /Your request is in/.test(document.body.innerText));
 const req = outbox.filter((m) => /Redesign request/.test(m.subject)).pop();
 ok(!!req && req.to === "thelazycreatorco@gmail.com" && req.replyTo === "pat@owner-biz.com" && req.text.includes("/r/" + id), "redesign request reaches the studio with the report link and reply-to");
-await r.click('[data-fixit]'); await r.waitForSelector(".plans");
-ok(/Unlock your full report/.test(await text(r)), "Fix It on a free report opens the plans");
 
 // ---- free account: one free scan per account
 const f = await newPage();
@@ -107,7 +105,7 @@ await signUp(o, BASE, { email: "thelazycreatorco@gmail.com", name: "Michael Bail
 await o.goto(BASE + "/r/" + id); await o.waitForSelector(".rep-head", { timeout: 20000 });
 t = await text(o);
 ok(!(await o.$(".lock-bar")) && /Your top 5 fixes/.test(t) && !!(await o.$("#savePdf")), "a paid/owner viewer sees the full report");
-ok(/Get this report fixed/.test(t), "paid viewers get 'Get this report fixed'");
+ok(!!(await o.$('#offers a[href="/fix/' + id + '"]')), "the offer links to the new-website guide for this report");
 await scan(o, "127.0.0.2:8102"); await scan(o, "127.0.0.2:8102");
 ok(!!(await o.$(".rep-head")) && !(await o.$(".lock-bar")), "owner can run repeated checks, always full");
 await o.goto(BASE + "/account"); await o.waitForSelector(".dash-list.reports");

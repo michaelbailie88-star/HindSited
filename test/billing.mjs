@@ -48,9 +48,11 @@ ok(new URL(p.url()).pathname === "/r/" + rid && /Unlock your full report/.test(a
 await Promise.all([p.waitForNavigation(), p.click('[data-plan="solo"][data-int="month"]')]);
 await p.waitForSelector(".rep-head", { timeout: 60000 });
 ok(new URL(p.url()).pathname === "/r/" + rid && !(await p.$(".lock-bar")) && /Your top 5 fixes/.test(await text(p)), "after paying they return to the same report, now fully unlocked");
-ok(/Get this report fixed/.test(await text(p)), "Fix It now leads to the fix guide");
+ok(/Start my new website/.test(await text(p)) && !/Fix It/.test(await text(p)), "paid report offers the new website, with no Fix It promise");
 ok(state.sessions["cs_test_0x"].price === "price_solo_m" && /back=%2Fr%2F/.test(state.sessions["cs_test_0x"].success_url), "checkout used the Solo monthly price and returns to the report");
 let t = await dash();
+ok(!/fix your report/i.test(await (async () => { await p.goto(BASE + "/pricing"); await p.waitForSelector(".plans"); return text(p); })()), "pricing no longer promises to fix reports");
+t = await dash();
 ok(/Solo/.test(t) && /Renews/.test(t) && /30 left|29 left/.test(t), "dashboard shows Solo, its renewal date and checks left");
 ok(/Solo Biz/.test(t) && /Sam/.test(t), "dashboard shows the account holder and business");
 await p.screenshot({ path: path.join(here, "out", "p3-dash-solo.png"), fullPage: true });

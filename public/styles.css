@@ -818,20 +818,26 @@ label.check input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
 .fx-act .btn:disabled { opacity: .45; cursor: not-allowed; }
 .fx-steps { padding-left: 22px; margin: 10px 0; color: var(--ink-2); display: grid; gap: 8px; }
 .fx-steps li { padding-left: 4px; overflow-wrap: anywhere; }
-.fx-mail { color: var(--ink); white-space: nowrap; }
-.fx-copy { font-size: 13px; margin-left: 4px; }
 .fx-emails { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 6px; }
 .fx-emails li { background: var(--paper); border-radius: 9px; padding: 9px 12px; font-weight: 600; min-width: 0; }
+@media (max-width: 380px) { .fx-emails li:not(.muted) { font-size: 14px; padding: 9px 10px; letter-spacing: -.01em; } }
 .fx-emails li.muted { background: none; padding: 0 2px; font-weight: 400; font-size: 14px; }
 .fx-tip { background: var(--amber-soft); color: #5c3700 !important; border-radius: 10px; padding: 12px 14px; font-size: 15px; }
 .fx-stuck { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
 .fx-stuck-form { display: grid; gap: 10px; margin-top: 10px; }
-.fx-stuck-form label, .fx-done-form label:not(.check) { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; min-width: 0; }
-.fx-stuck-form textarea, .fx-done-form textarea, .fx-done-form input:not([type=checkbox]) { font: 400 16px/1.4 var(--body); padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; width: 100%; }
+.fx-stuck-form[hidden] { display: none; }
+.fx-stuck-form label, .fx-form label:not(.check) { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; min-width: 0; }
+.fx-stuck-form textarea, .fx-form textarea, .fx-form input:not([type=checkbox]) { font: 400 16px/1.4 var(--body); padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; width: 100%; }
 .fx-stuck-form .btn { justify-self: start; }
-.fx-done-form { display: grid; gap: 12px; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
-.fx-done-form input[name=code] { max-width: 160px; font: 700 20px/1 var(--mono); letter-spacing: .2em; }
-.fx-dead { margin-top: 22px; background: var(--paper); border-radius: 14px; padding: 16px 18px; }
-.fx-dead h3 { margin-top: 0; }
-.fx-dead .btn { white-space: normal; max-width: 100%; text-align: center; }
+.fx-form { display: grid; gap: 14px; margin-top: 6px; }
+.fx-wants { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.fx-wants legend { font-weight: 600; font-size: 14.5px; margin-bottom: 4px; padding: 0; }
+.fx-wants .check { display: flex; gap: 10px; align-items: center; font-size: 15.5px; min-height: 28px; }
+.fx-wants .check input { width: 18px; height: 18px; flex: none; }
+.fx-sum { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 6px 0 16px; }
+.fx-sum dt { color: var(--muted); font-size: 14px; }
+.fx-sum dd { margin: 0; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.fx-sum .fx-note { font-weight: 400; white-space: pre-wrap; }
+@media (max-width: 420px) { .fx-sum { grid-template-columns: minmax(0, 1fr); gap: 2px; } .fx-sum dd { margin-bottom: 8px; } }
+.offer-fine { margin: 12px 0 0 !important; }
 .fx-final .btn { text-decoration: none; }

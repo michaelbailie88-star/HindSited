@@ -190,17 +190,17 @@ await o.goto(BASE + "/r/" + freeId); await o.waitForSelector(".rep-head", { time
 await o.reload(); await o.waitForSelector(".rep-head", { timeout: 20000 });
 await o.evaluate(() => document.querySelectorAll("details.cat").forEach((d) => (d.open = true)));
 await check(o, "report-full");
-// fix guide: every step
-await o.goto(BASE + "/fix/" + freeId); await o.waitForSelector(".fx-card"); await check(o, "fix-platform");
-if (!/built on Squarespace/.test(await o.evaluate(() => document.body.innerText))) { problems++; console.log("✗ fix guide named the wrong platform for a Squarespace site"); }
-await o.click('.fx-choice[data-p="Shopify"]'); await check(o, "fix-platform-picked");
-await o.click("#next"); await o.waitForSelector("#in"); await check(o, "fix-login");
-await o.click("#cant"); await o.waitForSelector(".fx-dead"); await check(o, "fix-recover");
-await o.click("#in"); await o.waitForSelector("#doneForm"); await check(o, "fix-invite");
-await o.click("[data-stuck]"); await o.waitForSelector(".fx-stuck-form"); await check(o, "fix-stuck");
-await o.click('#doneForm button[type=submit]'); await o.waitForSelector("#doneForm .form-err:not([hidden])"); await check(o, "fix-invite-error");
-await o.type('#doneForm input[name=code]', "4821"); await o.click('#doneForm input[name=sent]'); await o.click('#doneForm button[type=submit]'); await o.waitForSelector(".fx-final"); await check(o, "fix-done");
-await c.goto(BASE + "/fix/" + freeId); await c.waitForFunction(() => /part of the paid plans/.test(document.body.innerText)); await check(c, "fix-free-account");
+// new-website guide: every step
+await o.goto(BASE + "/fix/" + freeId); await o.waitForSelector("#aboutForm"); await check(o, "fix-about");
+await o.$eval('#aboutForm input[name=business]', (e) => (e.value = "")); await o.click('#aboutForm button[type=submit]'); await o.waitForSelector("#aboutForm .form-err:not([hidden])"); await check(o, "fix-about-error");
+await o.type('#aboutForm input[name=business]', "Cedar Bakery and Café on Main Street"); await o.click('#aboutForm input[value="Online booking"]'); await o.click('#aboutForm input[value="Photo gallery or portfolio"]');
+await o.type('#aboutForm textarea[name=note]', "We'd love a warmer look, bigger photos of the bread, and a simple way to order cakes for pick-up.");
+await o.click('#aboutForm button[type=submit]'); await o.waitForSelector("[data-d]"); await check(o, "fix-domain");
+await o.click("[data-stuck]"); await check(o, "fix-stuck"); await o.click("[data-stuck]");
+await o.click('[data-d="locked"]'); await o.waitForSelector("#gotIn"); await check(o, "fix-recover");
+await o.click("#skip"); await o.waitForSelector("#send"); await check(o, "fix-send");
+await o.click("#send"); await o.waitForSelector(".fx-final"); await check(o, "fix-done");
+const cE = await b.createBrowserContext(); const anon2 = await page(cE); await anon2.goto(BASE + "/fix/" + freeId); await anon2.waitForFunction(() => /Sign in to continue/.test(document.body.innerText)); await check(anon2, "fix-signed-out");
 await scanTo(o, "127.0.0.1:9"); await o.waitForSelector(".err-box", { timeout: 120000 }); await check(o, "scan-error");
 await c.goto(BASE + "/account#review"); await c.waitForSelector("#revForm");
 await c.click(".star-pick label:nth-of-type(4)"); await c.type('#revForm textarea[name="text"]', "Really useful. Found things on our site we never would have spotted ourselves.");

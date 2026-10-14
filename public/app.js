@@ -70,7 +70,7 @@ function showSignIn({ mode = "signin", next = "/account", title, lead } = {}) {
 }
 
 const PRICES = {
-  solo: { name: "Solo", for: "One business", month: 19, once: 299, perks: ["Full reports: every issue revealed", "30 website checks a month", "Fix tools: Review Booster and Quote Calculator", "Fix It: I'll fix your report for you"] },
+  solo: { name: "Solo", for: "One business", month: 19, once: 299, perks: ["Full reports: every issue revealed", "30 website checks a month", "Fix tools: Review Booster and Quote Calculator", "Re-check after every change and watch your score go up"] },
   agency: { name: "Agency", for: "Up to 10 businesses", month: 79, once: 999, perks: ["Everything in Solo, for 10 businesses", "300 website checks a month", "Reports and PDFs with your own logo", "Add more businesses for $6/month each"] }
 };
 function showPaywall(d, url, back) {
@@ -86,9 +86,9 @@ function showPaywall(d, url, back) {
     "upgrade": "Pick the plan that fits."
   }[d.reason] || "You've reached the limit of your free check.";
   const sub = d.reason === "pricing"
-    ? "Every plan gets full reports with every issue revealed, plus the tools that fix the two most common gaps: Review Booster for more Google reviews and Quote Calculator for more enquiries. Send any report with Fix It and I'll fix it for you."
+    ? "Every plan gets full reports with every issue revealed, plus the tools that fix the two most common gaps: Review Booster for more Google reviews and Quote Calculator for more enquiries. Want it all done for you? I build brand-new websites from $500."
     : d.reason === "unlock"
-    ? "Subscribe and every hidden issue is revealed straight away, with exactly where it is and how to fix it. Then hit Fix It and I'll fix them for you."
+    ? "Subscribe and every hidden issue is revealed straight away, with exactly where it is and how to fix it."
     : "See every issue in full, check your site whenever you change it, and get the Review Booster and Quote Calculator too.";
   const card = (k) => { const p = PRICES[k]; return `<div class="plan${k === "solo" ? " plan-main" : ""}"><h3>${p.name}</h3><p class="muted">${p.for}</p>
     <p class="price"><b>$${p.month}</b>/month</p><p class="muted small">or $${p.once} once for lifetime access</p>
@@ -393,7 +393,7 @@ async function showReport(report, scan, meta = {}) {
 
   html += meta.brand
     ? `<div class="cta"><div><h3>Want these fixed?</h3><p>${esc(meta.brand.name)} can take care of every issue in this report.${meta.brand.site ? ` <span class="print-only">${esc(meta.brand.site.replace(/^https?:\/\//, ""))}</span>` : ""}</p></div>${meta.brand.site ? `<a class="btn" href="${esc(meta.brand.site)}" target="_blank" rel="noopener">Get in touch</a>` : ""}</div>`
-    : offersHtml({ locked, paidViewer: !!(me.signedIn && me.plan !== "free"), all, id: meta.id });
+    : offersHtml({ all, id: meta.id });
   html += `<div class="again no-print"><button id="again">Check another site</button></div></div>`;
 
   const rep = $("#report");
@@ -414,33 +414,23 @@ async function showReport(report, scan, meta = {}) {
   view("report");
 }
 
-// ---------------------------------------------------------------- offers on every report
-function offersHtml({ locked, paidViewer, all, id }) {
-  const fixReady = paidViewer && !locked;
+// ---------------------------------------------------------------- the offer on every report
+function offersHtml({ all, id }) {
+  const n = all ? all + " issue" + (all === 1 ? "" : "s") : "every issue";
   return `<div class="offers no-print" id="offers">
-    <div class="offers-head"><p class="eyebrow">Want these fixed?</p><h3>Two ways I can fix this for you</h3>
-      <p class="sub">I'm Michael, the one-person web studio behind HindSited (<a href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">The Lazy Creator Company</a>). Pick what suits you.</p></div>
-    <div class="offer-grid">
-      <article class="offer">
-        <p class="offer-k">Option 1</p><h4>A brand-new website</h4>
-        <p>A bug-free redesign with a fresh, modern look, hand-built for your business. Every issue in this report is gone for good, not patched.</p>
-        <ul class="ticks"><li>Designed for phones first, fast to load</li><li>Clear buttons that turn visitors into calls and bookings</li><li>Google-ready: titles, descriptions, sitemap</li><li>Hosting and updates available</li></ul>
-        <p class="offer-price">From <b>$500</b></p>
-        <div class="offer-act"><button class="btn" type="button" data-req="redesign">Request a redesign</button><a class="linkish" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>
-        <div class="req" data-for="redesign" hidden></div>
-      </article>
-      <article class="offer">
-        <p class="offer-k">Option 2</p><h4>Fix It: keep your site, fix ${all ? "all " + all + " issue" + (all === 1 ? "" : "s") : "the issues"}</h4>
-        <p>Subscribe and I'll fix this report, including setting up your reviews and an instant-quote button on your site. You also get monthly checks, so new problems are caught before customers notice.</p>
-        <ul class="ticks"><li>Every hidden issue revealed straight away</li><li>Fixes done for you, from this exact report</li><li>A step-by-step guide gets your site ready in about 10 minutes, no passwords shared</li><li>Re-check any time to see the score go up</li></ul>
-        <p class="offer-price">From <b>$19</b>/month or <b>$299</b> once</p>
-        <div class="offer-act">${fixReady && id ? `<a class="btn" href="/fix/${esc(id)}">Get this report fixed</a>` : `<button class="btn" type="button" data-fixit>Fix It</button>`}</div>
-      </article>
-    </div></div>`;
+    <div class="offers-head"><p class="eyebrow">Want these fixed?</p><h3>Get a new website with ${esc(n)} gone</h3>
+      <p class="sub">I'm Michael, the one-person web studio behind HindSited (<a href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">The Lazy Creator Company</a>). I don't patch old sites. I build you a new one that you fully own.</p></div>
+    <article class="offer offer-one">
+      <h4>A brand-new website, built for your business</h4>
+      <p>A bug-free rebuild with a fresh, modern look. Every issue in this report is gone for good, not patched. It keeps your web address, and it's yours: you never share a password with anyone.</p>
+      <ul class="ticks"><li>Designed for phones first, fast to load</li><li>Clear buttons that turn visitors into calls and bookings</li><li>Google-ready: titles, descriptions, sitemap</li><li>Keeps your web address</li><li>Hosting and updates available</li></ul>
+      <p class="offer-price">From <b>$500</b></p>
+      <div class="offer-act">${id ? `<a class="btn" href="/fix/${esc(id)}">Start my new website</a>` : `<button class="btn" type="button" data-req="redesign">Request a new website</button>`}<a class="linkish" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>
+      <p class="muted small offer-fine">About 5 minutes. No cost to ask, and no work or charge until you agree to a quote.${id ? ` <button class="linkish" type="button" data-req="redesign">Or just send me a message</button>` : ""}</p>
+      <div class="req" data-for="redesign" hidden></div>
+    </article></div>`;
 }
 function wireOffers(root, { reportId, host, back }) {
-  const fi = root.querySelector("[data-fixit]");
-  if (fi) fi.onclick = () => showPaywall({ reason: "unlock", site: host }, null, back);
   root.querySelectorAll("[data-req]").forEach((b) => (b.onclick = () => {
     const kind = b.dataset.req, box = root.querySelector(`.req[data-for="${kind}"]`);
     if (!box.hidden) { box.hidden = true; return; }
