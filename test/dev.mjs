@@ -31,7 +31,7 @@ export function startDev(port = 8100) {
         rsp.writeHead(r.status, h); rsp.end(Buffer.from(await r.arrayBuffer())); return;
       }
       let f = path.join(pub, p === "/" ? "index.html" : p);
-      if (/^\/(r\/|account|reset)/.test(p)) f = path.join(pub, "index.html");
+      if (/^\/(r\/|account|reset|pricing)/.test(p)) f = path.join(pub, "index.html");
       if (["/privacy", "/terms", "/cancel"].includes(p)) f = path.join(pub, p.slice(1) + ".html");
       if (p === "/reviews") f = path.join(pub, "booster.html");
       if (p.startsWith("/review/")) f = path.join(pub, "review.html");

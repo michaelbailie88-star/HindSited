@@ -35,8 +35,8 @@ function step(name, state, note) {
 
 // ---------------------------------------------------------------- views
 function view(name) {
-  for (const id of ["hero", "checks", "progress", "report", "panel", "sayso"]) { const el = $("#" + id); if (el) el.hidden = true; }
-  if (name === "home") { $("#hero").hidden = false; $("#checks").hidden = false; const s = $("#sayso"); if (s && s.dataset.has) s.hidden = false; }
+  for (const id of ["hero", "checks", "how", "progress", "report", "panel", "sayso"]) { const el = $("#" + id); if (el) el.hidden = true; }
+  if (name === "home") { $("#hero").hidden = false; $("#checks").hidden = false; $("#how").hidden = false; const s = $("#sayso"); if (s && s.dataset.has) s.hidden = false; }
   else $("#" + name).hidden = false;
   window.scrollTo({ top: 0 });
 }
@@ -70,7 +70,7 @@ function showSignIn({ mode = "signin", next = "/account", title, lead } = {}) {
 }
 
 const PRICES = {
-  solo: { name: "Solo", for: "One business", month: 19, once: 299, perks: ["Full reports: every issue revealed", "30 website checks a month", "Fix It: send any report to be fixed", "Review Booster and Quote Calculator"] },
+  solo: { name: "Solo", for: "One business", month: 19, once: 299, perks: ["Full reports: every issue revealed", "30 website checks a month", "Fix tools: Review Booster and Quote Calculator", "Fix It: I'll fix your report for you"] },
   agency: { name: "Agency", for: "Up to 10 businesses", month: 79, once: 999, perks: ["Everything in Solo, for 10 businesses", "300 website checks a month", "Reports and PDFs with your own logo", "Add more businesses for $6/month each"] }
 };
 function showPaywall(d, url, back) {
@@ -82,9 +82,12 @@ function showPaywall(d, url, back) {
     "business-limit": `Your plan covers ${d.allowed} business${d.allowed === 1 ? "" : "es"} and they're all in use.`,
     "scan-limit": `You've used all ${d.allowed} checks included this month.`,
     "unlock": `Unlock your full report${d.site ? " for <b>" + esc(d.site) + "</b>" : ""}.`,
+    "pricing": "Find the problems, then fix them.",
     "upgrade": "Pick the plan that fits."
   }[d.reason] || "You've reached the limit of your free check.";
-  const sub = d.reason === "unlock"
+  const sub = d.reason === "pricing"
+    ? "Every plan gets full reports with every issue revealed, plus the tools that fix the two most common gaps: Review Booster for more Google reviews and Quote Calculator for more enquiries. Send any report with Fix It and I'll fix it for you."
+    : d.reason === "unlock"
     ? "Subscribe and every hidden issue is revealed straight away, with exactly where it is and how to fix it. Then hit Fix It and I'll fix them for you."
     : "See every issue in full, check your site whenever you change it, and get the Review Booster and Quote Calculator too.";
   const card = (k) => { const p = PRICES[k]; return `<div class="plan${k === "solo" ? " plan-main" : ""}"><h3>${p.name}</h3><p class="muted">${p.for}</p>
@@ -93,7 +96,7 @@ function showPaywall(d, url, back) {
     <button class="btn" data-plan="${k}" data-int="month">Start ${p.name} monthly</button>
     <button class="btn ghost" data-plan="${k}" data-int="once">Pay once, $${p.once}</button></div>`; };
   const p = panel(`<div class="card-panel wide">
-    <p class="eyebrow">${d.reason === "unlock" ? "Full report" : "Keep going"}</p><h2 class="panel-h">${why}</h2>
+    <p class="eyebrow">${d.reason === "unlock" ? "Full report" : d.reason === "pricing" ? "Pricing" : "Keep going"}</p><h2 class="panel-h">${why}</h2>
     <p>${sub}</p>
     ${d.report && d.reason !== "unlock" ? `<p><a href="/r/${esc(d.report)}" class="linkish">See the free report again →</a></p>` : ""}
     ${!me.signedIn ? `<p class="flash">You'll create your account (or sign in) first, so your plan is saved to you.</p>` : ""}
@@ -196,11 +199,16 @@ async function route() {
     return;
   }
   if (q.get("deleted")) { history.replaceState({}, "", "/"); view("home"); errEl.textContent = "Your account and everything in it has been deleted."; errEl.hidden = false; return; }
+  if (path === "/pricing") { showPaywall({ reason: "pricing" }); return; }
   const pending = q.get("scan");
   if (pending && cleanInput(pending)) { history.replaceState({}, "", "/"); input.value = pending.replace(/^https?:\/\//, ""); startScan(cleanInput(pending)); return; }
   view("home");
+  if (location.hash === "#how") $("#how").scrollIntoView();
 }
 window.addEventListener("popstate", route);
+// "How it works" from the menu while on a report or panel: show the home page there
+window.addEventListener("hashchange", () => { if (location.hash === "#how" && location.pathname === "/") { view("home"); $("#how").scrollIntoView(); } });
+$("#howScan").addEventListener("click", (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); input.focus({ preventScroll: true }); });
 (async () => {
   me = await window.HS.me();
   route();
@@ -283,7 +291,20 @@ function serpBlock(report, scan) {
 }
 
 
+// findings that one of the fix tools solves (hidden on agency-branded reports)
+const FIX_TOOLS = {
+  no_reviews_home: { href: "/reviews", label: "Fix this with Review Booster", note: "Get more Google reviews with QR cards, ready-made messages and a review page. Included with every plan." },
+  no_cta_fold: { href: "/quotes", label: "Add an instant-quote button", note: "Quote Calculator gives visitors a price on the spot and sends you their details. Included with every plan." },
+  no_contact_path: { href: "/quotes", label: "Add an instant-quote form", note: "Quote Calculator gives visitors a price and a way to reach you, and emails you every enquiry." }
+};
+let reportBrand = null;
+function fixToolHtml(f) {
+  const t = !reportBrand && FIX_TOOLS[f.rule];
+  return t ? `<div class="fix-tool no-print"><a class="btn small-btn" href="${t.href}">${t.label}</a><span>${t.note}</span></div>` : "";
+}
+
 async function showReport(report, scan, meta = {}) {
+  reportBrand = meta.brand || null;
   shotImg = await phoneImage(scan.render.shots && scan.render.shots.mobile);
   const host = new URL(scan.render.finalUrl).hostname.replace(/^www\./, "");
   const locked = !!meta.locked, hid = meta.hidden || { count: 0, total: report.findings.length, bySeverity: {}, byCat: {} };
@@ -339,7 +360,7 @@ async function showReport(report, scan, meta = {}) {
       const list = byCat[k];
       if (!list) continue;
       html += `<details class="cat"${k === shownList[0]?.cat ? " open" : ""}><summary>${esc(label)}<span class="cat-count">${list.length} issue${list.length === 1 ? "" : "s"}</span></summary><div class="cat-body">` +
-        list.map((f) => `<div class="mini"><h5><span class="sev ${sevClass(f.severity)}">${f.severity}</span>${esc(f.title)}</h5><p>${esc(f.why)}</p><p><b>Fix:</b> ${esc(f.fix)}</p>${evidenceList(f, 3)}</div>`).join("") + `</div></details>`;
+        list.map((f) => `<div class="mini"><h5><span class="sev ${sevClass(f.severity)}">${f.severity}</span>${esc(f.title)}</h5><p>${esc(f.why)}</p><p><b>Fix:</b> ${esc(f.fix)}</p>${fixToolHtml(f)}${evidenceList(f, 3)}</div>`).join("") + `</div></details>`;
     }
     html += `</div>`;
   }
@@ -445,6 +466,7 @@ function fixCard(f, n, report, scan) {
     <h4>${esc(f.title)}</h4>
     <p>${esc(f.why)}</p>
     <div class="two"><div><span class="label">What it's costing you</span>${esc(f.cost)}</div><div><span class="label">How to fix it</span>${esc(f.fix)}</div></div>
+    ${fixToolHtml(f)}
     ${f.extra && f.extra.serp ? serpBlock(report, scan) : ""}
     ${evidenceList(f)}
   </div>`;

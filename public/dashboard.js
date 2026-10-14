@@ -59,11 +59,12 @@ export async function renderDashboard(el, { me, flash, api, upgrade, refreshMe }
     <section class="dash-sec"><div class="sec-row"><h3>Your reports</h3><span class="muted small">${(d.reports || []).length}</span></div>
       ${reports ? `<ul class="dash-list reports">${reports}</ul>` : `<p class="muted">No reports yet. Run a website check above.</p>`}</section>
 
+    <div class="tools-head"><h3 class="sub-h">Your fix tools</h3><p class="muted small">Included with ${free ? "every plan (free to try)" : "your plan"}: they fix the two gaps we find most often.</p></div>
     <div class="tool-grid">
       <section class="dash-sec"><div class="sec-row"><h3>Review Booster</h3><a class="linkish" href="/reviews">${kits.length ? "Open" : "Set up"} →</a></div>
-        ${kitRows ? `<ul class="dash-list">${kitRows}</ul>` : `<p class="muted">Get more Google reviews with QR cards and a review page.</p>`}</section>
+        ${kitRows ? `<ul class="dash-list">${kitRows}</ul>` : `<p class="muted">Fixes "no reviews on your homepage": more Google reviews with QR cards, messages and a review page.</p>`}</section>
       <section class="dash-sec"><div class="sec-row"><h3>Quote Calculator</h3><a class="linkish" href="/quotes">${calcs.length ? "Open" : "Set up"} →</a></div>
-        ${calcRows ? `<ul class="dash-list">${calcRows}</ul>` : `<p class="muted">Instant price estimates that send you leads.</p>`}</section>
+        ${calcRows ? `<ul class="dash-list">${calcRows}</ul>` : `<p class="muted">Fixes "no easy way to get a price": an instant-quote button that emails you every enquiry.</p>`}</section>
     </div>
 
     ${d.whiteLabel ? `<section class="dash-sec"><h3>Your branding on reports</h3>

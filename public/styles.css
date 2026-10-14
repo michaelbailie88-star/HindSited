@@ -732,3 +732,22 @@ details.set.danger summary { color: #a32a0c; }
 }
 .mod-list li, .mod-list li > div, .mod-list p { min-width: 0; overflow-wrap: anywhere; }
 .verify-mail { display: block; }
+
+/* ---------------- how it works + fix tools ---------------- */
+.how { padding: 56px 0 64px; }
+.how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+@media (min-width: 900px) { .how-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.how-step { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.how-n { width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font: 800 17px/1 var(--display); }
+.how-step h3 { font: 800 21px/1.2 var(--display); font-stretch: 104%; margin: 2px 0 0; }
+.how-step p { margin: 0; color: var(--ink-2); }
+.how-step .btn { margin-top: auto; text-decoration: none; }
+.how-tools { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 8px; }
+.how-tools a { font-weight: 700; }
+.fix-tool { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--ok-soft); border-radius: 12px; padding: 12px 14px; margin: 14px 0 4px; }
+.fix-tool .btn { text-decoration: none; background: var(--ok); }
+.fix-tool .btn:hover { background: #155c38; }
+.fix-tool span { font-size: 14px; color: #14472d; flex: 1 1 220px; min-width: 0; }
+.tools-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tools-head p { margin: 0; }
+.tools-head .sub-h { margin: 6px 0 0; }

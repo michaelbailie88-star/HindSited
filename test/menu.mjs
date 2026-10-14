@@ -36,8 +36,9 @@ ok(!(await isOpen()), "Escape closes the menu");
 await p.click(".menu-btn"); await wait(100); await p.mouse.click(180, 700); await wait(100);
 ok(!(await isOpen()), "tapping the page outside the menu closes it");
 await p.click(".menu-btn"); await wait(100);
-await Promise.all([p.waitForNavigation(), p.click('#siteMenu a[href="/reviews"]')]);
-ok(new URL(p.url()).pathname === "/reviews", "Review Booster link in the menu works");
+await Promise.all([p.waitForNavigation(), p.click('#siteMenu a[href="/pricing"]')]);
+await p.waitForSelector(".plans");
+ok(new URL(p.url()).pathname === "/pricing", "Pricing link in the menu opens the plans");
 
 // signed in: account dropdown
 await signUp(p, BASE, { email: "menu@acme-co.com", name: "Mona Lisa", business: "Acme Co" });
