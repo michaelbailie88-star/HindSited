@@ -6,7 +6,8 @@ import { stripe } from "../lib/stripe.mjs";
 export default async (req) => {
   const u = new URL(req.url);
   const sid = (u.searchParams.get("sid") || "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 200);
-  const back = (q) => Response.redirect(u.origin + "/account" + q, 302);
+  const ret = (u.searchParams.get("back") || "").match(/^\/r\/[a-f0-9-]{20,40}$/i);
+  const back = (q) => Response.redirect(u.origin + (ret && /success/.test(q) ? ret[0] : "/account") + q, 302);
   if (!sid) return back("?checkout=error");
   let s;
   try { s = await stripe("GET", "/checkout/sessions/" + sid); } catch { return back("?checkout=error"); }

@@ -3,7 +3,7 @@
 import { launchBrowser } from "../lib/browser.mjs";
 import { fullScan } from "../lib/pipeline.mjs";
 import { normalizeUrl, assertPublicHost } from "../lib/guard.mjs";
-import { reports, appSecret } from "../lib/store.mjs";
+import { reports, appSecret, getUser, saveUser } from "../lib/store.mjs";
 import { buildReport } from "../../public/rules.js";
 import { refund } from "../lib/refund.mjs";
 
@@ -15,7 +15,7 @@ export default async (req) => {
   const store = reports();
   const base = await store.get(id, { type: "json" });
   if (!base || base.state !== "queued") return;
-  const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, brand: base.brand || null, createdAt: base.createdAt };
+  const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, tier: base.tier || (base.free ? "free" : "paid"), day: base.day || null, brand: base.brand || null, createdAt: base.createdAt };
   let chain = Promise.resolve();
   // saves run strictly in order so a late progress update never overwrites the result
   const save = (data) => (chain = chain.then(() => store.setJSON(id, { ...keep, ...data, at: new Date().toISOString() })).catch(() => {}));
@@ -33,11 +33,13 @@ export default async (req) => {
     if (out.error) {
       const st = out.render && out.render.status;
       await save({ state: "error", stages, error: st ? `The site answered with error ${st}, so there was nothing to check.` : "The site didn't load." });
-      await refund(keep.owner, id, keep.site, keep.free).catch(() => {});
+      await refund(keep.owner, id, keep.site, keep.free, keep.day).catch(() => {});
       return;
     }
     const r = buildReport(out.scan);
     await save({ state: "done", stages, timings: out.timings, score: r.score, grade: r.grade.label, scan: out.scan });
+    await chain;
+    if (keep.owner) await noteScore(keep.owner, id, r).catch(() => {});
   } catch (e) {
     const m = String((e && e.code) || "") + " " + String((e && e.message) || e);
     const friendly = /blocked-host/.test(m) ? "That address isn't a public website."
@@ -45,10 +47,19 @@ export default async (req) => {
       : /ERR_CONNECTION|ERR_TIMED_OUT|ERR_SSL|ERR_CERT/.test(m) ? "The website wouldn't connect. It may be down or have a security certificate problem."
       : "Something went wrong checking the site. Try again in a minute.";
     await save({ state: "error", error: friendly, detail: m.slice(0, 400) });
-    await refund(keep.owner, id, keep.site, keep.free).catch(() => {});
+    await refund(keep.owner, id, keep.site, keep.free, keep.day).catch(() => {});
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
 };
+
+// put the score on the owner's report list so the dashboard can show it
+async function noteScore(email, id, r) {
+  const u = await getUser(email);
+  const e = u && (u.reports || []).find((x) => x.id === id);
+  if (!e) return;
+  e.score = r.score; e.grade = r.grade.label; e.issues = r.findings.length;
+  await saveUser(u);
+}
 
 export const config = { path: "/api/check-bg", background: true };

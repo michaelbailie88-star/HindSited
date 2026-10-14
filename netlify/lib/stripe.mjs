@@ -49,10 +49,13 @@ export async function refreshSubscriptions(user) {
   let changed = false;
   for (const s of user.subs || []) {
     if (s.ended) continue;
-    if (s.checkedAt && Date.now() - Date.parse(s.checkedAt) < 6 * 3600 * 1000) continue;
+    if (s.checkedAt && s.periodEnd !== undefined && Date.now() - Date.parse(s.checkedAt) < 6 * 3600 * 1000) continue;
     try {
       const sub = await stripe("GET", "/subscriptions/" + s.id);
       s.status = sub.status; s.checkedAt = new Date().toISOString();
+      const end = sub.current_period_end || (sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].current_period_end);
+      s.periodEnd = end ? new Date(end * 1000).toISOString() : s.periodEnd || null;
+      s.cancelling = !!(sub.cancel_at_period_end || sub.cancel_at);
       if (!ACTIVE.has(sub.status)) s.ended = true;
       changed = true;
     } catch { /* keep last known state if Stripe can't be reached */ }

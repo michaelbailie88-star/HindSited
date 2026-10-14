@@ -1,7 +1,7 @@
 // Transactional email through Brevo's API (free plan: 300 emails a day).
 export const outbox = []; // tests only
-export async function sendMail({ to, subject, html, text }) {
-  if (process.env.HS_LOCAL_MAIL === "1") { outbox.push({ to, subject, text }); return; }
+export async function sendMail({ to, subject, html, text, replyTo }) {
+  if (process.env.HS_LOCAL_MAIL === "1") { outbox.push({ to, subject, text, replyTo }); return; }
   const key = Netlify.env.get("BREVO_API_KEY");
   if (!key) throw new Error("mail-not-configured");
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -10,7 +10,8 @@ export async function sendMail({ to, subject, html, text }) {
     body: JSON.stringify({
       sender: { name: "HindSited", email: Netlify.env.get("MAIL_FROM") || "thelazycreatorco@gmail.com" },
       to: [{ email: to }], subject, htmlContent: html, textContent: text,
-      tags: ["hindsited-signin"]
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
+      tags: ["hindsited"]
     }),
     signal: AbortSignal.timeout(10000)
   });

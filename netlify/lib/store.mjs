@@ -50,3 +50,11 @@ export function newUser(email) {
   return { email: email.toLowerCase(), plan: "free", createdAt: new Date().toISOString(), freeUsed: null, businesses: [], usage: { month: "", scans: 0 }, reports: [] };
 }
 export const OWNER_EMAILS = ["thelazycreatorco@gmail.com", "michaelbailie88@icloud.com"];
+export const reviewsStore = () => S("site-reviews");
+export const counters = () => S("counters");
+// One-way fingerprint for abuse records (free-scan / free-kit claims, daily
+// limits): lets us recognise a repeat without keeping the email or IP itself.
+export async function fingerprint(value) {
+  return crypto.createHmac("sha256", await appSecret()).update(String(value).toLowerCase()).digest("hex").slice(0, 32);
+}
+export async function deleteUser(email) { await users().delete(userKey(email)); }

@@ -10,7 +10,7 @@ process.env.HS_LOCAL_MAIL = "1";
 globalThis.Netlify = { env: { get: (k) => process.env[k] } };
 const load = async (f) => (await import("../netlify/functions/" + f + ".mjs"));
 const mods = {};
-for (const f of ["auth-start", "auth-verify", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message", "calc", "calc-lead", "calc-leads"]) mods[f] = await load(f);
+for (const f of ["auth", "account", "request", "reviews", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message", "calc", "calc-lead", "calc-leads"]) mods[f] = await load(f);
 const routes = {};
 for (const m of Object.values(mods)) { const p = m.config.path; (Array.isArray(p) ? p : [p]).forEach((x) => (routes[x] = m)); }
 export const { outbox } = await import("../netlify/lib/mail.mjs");
@@ -25,13 +25,14 @@ export function startDev(port = 8100) {
         const chunks = []; for await (const c of req) chunks.push(c);
         const headers = { ...req.headers };
         const request = new Request("http://127.0.0.1:" + port + req.url, { method: req.method, headers, body: ["POST", "PUT"].includes(req.method) ? Buffer.concat(chunks) : undefined, redirect: "manual" });
-        if (mod.config.background) { rsp.writeHead(202); rsp.end(); mod.default(request).catch((e) => console.error("bg", e)); return; }
-        const r = await mod.default(request);
+        if (mod.config.background) { rsp.writeHead(202); rsp.end(); mod.default(request, {}).catch((e) => console.error("bg", e)); return; }
+        const r = await mod.default(request, { ip: req.headers["x-test-ip"] || req.socket.remoteAddress });
         const h = {}; r.headers.forEach((v, k) => (h[k] = v));
         rsp.writeHead(r.status, h); rsp.end(Buffer.from(await r.arrayBuffer())); return;
       }
       let f = path.join(pub, p === "/" ? "index.html" : p);
-      if (/^\/(r\/|account)/.test(p)) f = path.join(pub, "index.html");
+      if (/^\/(r\/|account|reset)/.test(p)) f = path.join(pub, "index.html");
+      if (["/privacy", "/terms", "/cancel"].includes(p)) f = path.join(pub, p.slice(1) + ".html");
       if (p === "/reviews") f = path.join(pub, "booster.html");
       if (p.startsWith("/review/")) f = path.join(pub, "review.html");
       if (p === "/quotes") f = path.join(pub, "quotes.html");

@@ -2,7 +2,7 @@
 // GET ?mine=1 lists the owner's kits. POST creates or updates (signed in).
 import { json } from "../lib/guard.mjs";
 import { sessionEmail } from "../lib/session.mjs";
-import { getUser, saveUser, newUser, claims } from "../lib/store.mjs";
+import { getUser, saveUser, newUser, claims, fingerprint } from "../lib/store.mjs";
 import { effectivePlan } from "../lib/entitle.mjs";
 import { PLANS } from "../lib/plans.mjs";
 import { kits, parseGoogleReviewLink, slugify, cleanUrl } from "../lib/kits.mjs";
@@ -52,10 +52,11 @@ export default async (req) => {
     const allowed = paid ? plan.businesses + ent.extra : 1;
     if (user.kits.length >= allowed) return json({ paywall: true, reason: paid ? "kit-limit" : "kit-free-used", allowed }, 402);
     if (!paid) {
-      const c = await claims().setJSON("review:" + g.key, { email, at: new Date().toISOString() }, { onlyIfNew: true });
+      const who = await fingerprint(email);
+      const c = await claims().setJSON("review:" + g.key, { who, at: new Date().toISOString() }, { onlyIfNew: true });
       if (!c.modified) {
         const ex = await claims().get("review:" + g.key, { type: "json" });
-        if (!ex || ex.email !== email) return json({ paywall: true, reason: "kit-listing-used" }, 402);
+        if (!ex || (ex.who !== who && ex.email !== email)) return json({ paywall: true, reason: "kit-listing-used" }, 402);
       }
     }
     kit = { slug: slugify(name), owner: email, createdAt: new Date().toISOString() };

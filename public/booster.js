@@ -10,7 +10,7 @@ const pageUrl = (k) => `${origin}/review/${k.slug}`;
 (async () => {
   me = await loadMe();
   if (!me.signedIn) {
-    signInForm($("#signin"), { next: "/reviews", lead: "<b>Start free.</b> Enter your email and we'll send you a sign-in link." });
+    signInForm($("#signin"), { next: "/reviews", lead: "<b>Start free.</b> Create your account, or sign in if you already have one. Your first review kit is free." });
     return;
   }
   $("#intro").hidden = true;

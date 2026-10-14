@@ -18,13 +18,17 @@ const ctx = await b.createBrowserContext();
 const p = await ctx.newPage(); await p.setViewport({ width: 1280, height: 900 });
 p.on("pageerror", (e) => errors.push(e.message));
 
-await p.goto(BASE + "/reviews"); await p.waitForSelector("#siForm");
+async function joinHere(pg, email, name, business) {
+  await pg.waitForSelector('.auth-form input[name="business"]');
+  await pg.type('.auth-form input[name="name"]', name); await pg.type('.auth-form input[name="business"]', business);
+  await pg.type('.auth-form input[name="email"]', email); await pg.type('.auth-form input[name="password"]', "Correct-horse-9");
+  await Promise.all([pg.waitForNavigation(), pg.click(".auth-go")]);
+}
+await p.goto(BASE + "/reviews"); await p.waitForSelector("#signin .auth-form");
 await p.screenshot({ path: out("p4-intro.png") });
-await p.type("#siEmail", "owner@smith-plumbing.com"); await p.click("#siForm button");
-await p.waitForFunction(() => /Check your inbox/.test(document.body.innerText));
-const link = outbox.filter((m) => m.to === "owner@smith-plumbing.com").pop().text.match(/https?:\/\/\S+/)[0];
-await p.goto(link); await p.waitForSelector("#kitForm", { timeout: 15000 });
-ok(new URL(p.url()).pathname === "/reviews", "sign-in link returns to Review Booster");
+await joinHere(p, "owner@smith-plumbing.com", "Sam Smith", "Smith Plumbing");
+await p.waitForSelector("#kitForm", { timeout: 15000 });
+ok(new URL(p.url()).pathname === "/reviews", "creating an account on Review Booster returns to Review Booster");
 await p.type("#kName", "Smith Plumbing");
 await p.type("#kGoogle", "https://www.google.com/maps/place/oops");
 await p.click("#kitForm button[type=submit]");
@@ -79,10 +83,7 @@ ok(sw[0] <= sw[1], "review page fits a phone");
 
 // another person can't take a free kit for the same Google listing
 const c3 = await b.createBrowserContext(); const r = await c3.newPage();
-await r.goto(BASE + "/reviews"); await r.waitForSelector("#siForm");
-await r.type("#siEmail", "copycat@other-biz.com"); await r.click("#siForm button");
-await r.waitForFunction(() => /Check your inbox/.test(document.body.innerText));
-await r.goto(outbox.filter((m) => m.to === "copycat@other-biz.com").pop().text.match(/https?:\/\/\S+/)[0]);
+await r.goto(BASE + "/reviews"); await joinHere(r, "copycat@other-biz.com", "Copy Cat", "Copycat Co");
 await r.waitForSelector("#kitForm"); await r.type("#kName", "Copycat"); await r.type("#kGoogle", "https://g.page/r/CTestSmith123/review");
 await r.click("#kitForm button[type=submit]");
 await r.waitForFunction(() => /already has a free review kit/.test(document.body.innerText), { timeout: 10000 });

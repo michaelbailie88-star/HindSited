@@ -18,6 +18,8 @@ export default async (req) => {
   const cur = effectivePlan(user, email).plan;
   if (plan === "extra" && cur !== "agency") return json({ error: "Extra businesses are for Agency plans." }, 400);
   const origin = new URL(req.url).origin;
+  // where to return after paying (e.g. the report they're unlocking)
+  const back = typeof body.back === "string" && /^\/r\/[a-f0-9-]{20,40}$/i.test(body.back) ? body.back : "";
   try {
     if (!user.customer) {
       const c = await stripe("POST", "/customers", { email, metadata: { app: "hindsited" } });
@@ -31,8 +33,8 @@ export default async (req) => {
       "line_items[0][price]": await priceId(plan, interval),
       "line_items[0][quantity]": 1,
       allow_promotion_codes: "true",
-      success_url: `${origin}/api/checkout/done?sid={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/account?checkout=cancelled`,
+      success_url: `${origin}/api/checkout/done?sid={CHECKOUT_SESSION_ID}${back ? "&back=" + encodeURIComponent(back) : ""}`,
+      cancel_url: back ? `${origin}${back}?checkout=cancelled` : `${origin}/account?checkout=cancelled`,
       metadata: { app: "hindsited", email, plan, interval },
       ...(interval === "month" ? { "subscription_data[metadata][app]": "hindsited", "subscription_data[metadata][plan]": plan, "subscription_data[metadata][email]": email } : { "payment_intent_data[metadata][app]": "hindsited", "payment_intent_data[metadata][plan]": plan })
     });

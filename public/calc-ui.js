@@ -29,6 +29,7 @@ export function renderCalculator(el, calc, { preview = false, onLead } = {}) {
       <label>Anything else? (optional)<textarea name="note" rows="2" maxlength="1000"></textarea></label>
       <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
       <button class="calc-btn" type="submit">Send me my exact quote</button>
+      <p class="calc-privacy">Your details go only to ${esc(calc.business || "this business")}, to answer your request. <a href="${location.origin}/privacy" target="_blank" rel="noopener">Privacy</a></p>
       <p class="calc-msg" role="status"></p>
     </form>`}
     ${calc.badge ? `<p class="calc-badge">Quote calculator by <a href="${location.origin}/quotes" target="_blank" rel="noopener">HindSited</a></p>` : ""}

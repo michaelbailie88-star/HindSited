@@ -39,6 +39,26 @@
   to = "/index.html"
   status = 200
 
+[[redirects]]
+  from = "/reset"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/terms.html"
+  status = 200
+
+[[redirects]]
+  from = "/cancel"
+  to = "/cancel.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -57,6 +77,11 @@
 
 [[headers]]
   for = "/account"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/reset"
   [headers.values]
     X-Frame-Options = "DENY"
 

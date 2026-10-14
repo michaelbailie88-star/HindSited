@@ -19,12 +19,15 @@ const ctx = await b.createBrowserContext();
 const p = await ctx.newPage(); await p.setViewport({ width: 1280, height: 900 });
 p.on("pageerror", (e) => errors.push(e.message));
 
-await p.goto(BASE + "/quotes"); await p.waitForSelector("#siForm");
-await p.type("#siEmail", "jo@bright-spark.com"); await p.click("#siForm button");
-await p.waitForFunction(() => /Check your inbox/.test(document.body.innerText));
-await p.goto(outbox.filter((m) => m.to === "jo@bright-spark.com").pop().text.match(/https?:\/\/\S+/)[0]);
+async function joinHere(pg, email, name, business) {
+  await pg.waitForSelector('.auth-form input[name="business"]');
+  await pg.type('.auth-form input[name="name"]', name); await pg.type('.auth-form input[name="business"]', business);
+  await pg.type('.auth-form input[name="email"]', email); await pg.type('.auth-form input[name="password"]', "Correct-horse-9");
+  await Promise.all([pg.waitForNavigation(), pg.click(".auth-go")]);
+}
+await p.goto(BASE + "/quotes"); await joinHere(p, "jo@bright-spark.com", "Jo Bright", "Bright Spark Cleaning");
 await p.waitForSelector(".tpl", { timeout: 15000 });
-ok(new URL(p.url()).pathname === "/quotes", "sign-in returns to Quote Calculator");
+ok(new URL(p.url()).pathname === "/quotes", "creating an account on Quote Calculator returns to Quote Calculator");
 await p.click('.tpl[data-k="cleaning"]');
 await p.waitForSelector("#prev .calc-amount");
 const first = await p.$eval("#prev .calc-amount", (e) => e.textContent);

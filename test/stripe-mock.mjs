@@ -20,7 +20,12 @@ export function startStripeMock(port = 8199) {
       }
       let m;
       if ((m = p.match(/^\/v1\/checkout\/sessions\/(\w+)$/))) { const x = state.sessions[m[1]]; return x ? send(x) : send({ error: { message: "no such session" } }, 404); }
-      if ((m = p.match(/^\/v1\/subscriptions\/(\w+)$/))) { const x = state.subs[m[1]]; return x ? send(x) : send({ error: { message: "no such sub" } }, 404); }
+      if ((m = p.match(/^\/v1\/subscriptions\/(\w+)$/))) {
+        const x = state.subs[m[1]];
+        if (!x) return send({ error: { message: "no such sub" } }, 404);
+        if (req.method === "DELETE") x.status = "canceled";
+        return send(x);
+      }
       if (p === "/v1/billing_portal/sessions") return send({ url: `http://127.0.0.1:${port}/portal/${b.customer}` });
       return send({ error: { message: "unhandled " + p } }, 404);
     });
@@ -30,7 +35,7 @@ export function startStripeMock(port = 8199) {
       if ((m = req.url.match(/^\/pay\/(\w+)/))) {
         const x = state.sessions[m[1]];
         x.status = "complete"; x.payment_status = "paid";
-        if (x.mode === "subscription") { const sid = "sub_" + m[1]; x.subscription = sid; state.subs[sid] = { id: sid, status: "active" }; }
+        if (x.mode === "subscription") { const sid = "sub_" + m[1]; x.subscription = sid; state.subs[sid] = { id: sid, status: "active", current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400, cancel_at_period_end: false }; }
         rsp.writeHead(302, { location: x.success_url }); return rsp.end();
       }
       if (req.url.startsWith("/portal/")) { rsp.writeHead(200, { "content-type": "text/html" }); return rsp.end("<h1>Mock billing portal</h1>"); }
