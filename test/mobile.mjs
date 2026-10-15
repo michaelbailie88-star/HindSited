@@ -230,6 +230,10 @@ await v.goto("http://127.0.0.1:8150/"); await v.waitForSelector("iframe"); await
 await v.goto(BASE + "/help"); await v.waitForSelector(".hq"); await check(v, "help");
 await v.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true))); await check(v, "help-all-open");
 await v.goto(BASE + "/help"); await v.waitForSelector("#hq"); await v.type("#hq", "domain"); await check(v, "help-search");
+await v.goto(BASE + "/new-website"); await v.waitForSelector("#ns"); await check(v, "new-website");
+await v.click("#ns button[type=submit]"); await v.waitForSelector("#ns .form-err:not([hidden])"); await check(v, "new-website-error");
+await v.type("#ns input[name=name]", "Avery Long-Name"); await v.type("#ns input[name=email]", "avery.with.a.long.address@example-home-services.com"); await v.type("#ns input[name=business]", "Avery's Home Services and Renovations"); await v.click("#ns input[name=domain][value=yes]");
+await v.click("#ns button[type=submit]"); await v.waitForSelector(".fx-final"); await check(v, "new-website-sent");
 for (const k of ["deposit", "launch", "card", "cancelled", "bad"]) { await v.goto(BASE + "/paid?k=" + k); await v.waitForSelector("#paid h1"); await check(v, "paid-" + k); }
 await v.goto(BASE + "/r/does-not-exist-000000000000000000"); await new Promise((r) => setTimeout(r, 2500)); await check(v, "report-missing");
 

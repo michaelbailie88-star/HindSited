@@ -64,7 +64,7 @@ await p.click('[data-plan="solo"][data-int="month"]'); await p.waitForSelector('
 ok(true, "choosing a plan while signed out asks to create an account");
 
 // ---- same site again from another connection: already used
-const q = await newPage(400);
+const q = await newPage(400); const qIp = "10.9.9.9"; await q.setExtraHTTPHeaders({ "x-test-ip": qIp });
 await scan(q, "127.0.0.1:8101");
 ok(/already had its free check/i.test(await text(q)), "a website gets only one free scan, whoever runs it");
 // ---- share link: still locked for others
@@ -73,13 +73,15 @@ ok(/Free report: showing/.test(await text(q)), "share link of a free report stay
 ok(await q.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "free report fits a phone");
 await q.screenshot({ path: out("p2-free-report-phone.png"), fullPage: true });
 
-// ---- daily limit per connection (2 free scans a day)
+// ---- one free scan per person: device and connection
 await scan(q, "127.0.0.2:8102");
-ok(!!(await q.$(".rep-head")), "a second free scan of a different site works");
+ok(!!(await q.$(".rep-head")), "a person who hasn't used their free scan can scan a different site");
 await scan(q, "127.0.0.3:8103");
-ok(!!(await q.$(".rep-head")), "two free scans a day from one connection");
-await scan(q, "127.0.0.4:8104");
-ok(/today's free checks/i.test(await text(q)), "a third free scan on the same day is refused");
+ok(/already used your free check/i.test(await text(q)) && !!(await q.$('a[href^="/r/"]')), "the same device can't run a second free scan on another site (and gets a link back to its report)");
+const sameIp = await (await b.createBrowserContext()).newPage(); await sameIp.setViewport({ width: 1200, height: 900 });
+await sameIp.setExtraHTTPHeaders({ "x-test-ip": qIp });
+await scan(sameIp, "127.0.0.3:8103");
+ok(/already used your free check/i.test(await text(sameIp)), "a new browser on the same internet connection can't either (30 days)");
 
 // ---- redesign request is emailed to the studio
 const r = await newPage();
@@ -90,6 +92,22 @@ await r.type('.req-form textarea[name="note"]', "Need a new site before spring."
 await r.click(".req-form button[type=submit]"); await r.waitForFunction(() => /Your request is in/.test(document.body.innerText));
 const req = outbox.filter((m) => /Redesign request/.test(m.subject)).pop();
 ok(!!req && req.to === "thelazycreatorco@gmail.com" && req.replyTo === "pat@owner-biz.com" && req.text.includes("/r/" + id), "redesign request reaches the studio with the report link and reply-to");
+
+// ---- request a new website with no scan and no account
+const ns = await newPage(390);
+await ns.goto(BASE + "/"); await ns.waitForSelector('.hero-alt a[href="/new-website"]');
+await Promise.all([ns.waitForNavigation(), ns.click('.hero-alt a[href="/new-website"]')]);
+await ns.waitForSelector("#ns");
+await ns.click('#ns button[type=submit]'); await ns.waitForSelector("#ns .form-err:not([hidden])");
+ok(/name/.test(await ns.$eval("#ns .form-err", (e) => e.textContent)), "new-website form checks the details before sending");
+ok(/\$25 CAD a month/.test(await text(ns)) && /50% to start/.test(await text(ns)), "new-website form shows the costs before sending");
+await ns.type('#ns input[name=name]', "Robin Baker"); await ns.type('#ns input[name=email]', "robin@robins-bakery.ca"); await ns.type('#ns input[name=business]', "Robin's Bakery");
+await ns.click('#ns input[name=domain][value=none]'); await ns.click('#ns input[value="Online booking"]');
+await ns.type('#ns textarea[name=note]', "Need it before Christmas.");
+await ns.click('#ns button[type=submit]'); await ns.waitForSelector(".fx-final");
+const nm = outbox.filter((m) => /New website request: Robin's Bakery/.test(m.subject)).pop();
+ok(!!nm && nm.replyTo === "robin@robins-bakery.ca" && nm.text.includes("No web address yet") && nm.text.includes("Online booking") && nm.text.includes("Need it before Christmas."), "the request reaches you with business, web address status, needs and notes, and reply-to");
+ok(await ns.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "new-website page fits a phone");
 
 // ---- free account: one free scan per account
 const f = await newPage();

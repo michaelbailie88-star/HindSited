@@ -1,6 +1,7 @@
-// Starts a scan. Anyone can run the free scan (no account needed): one free
-// scan per website ever, one per account, and a daily limit per connection.
-// Paid accounts use their monthly allowance.
+// Starts a scan. Anyone can run the free scan (no account needed), but it's
+// ONE free scan per person: per account, per device (a long-lived cookie), per
+// internet connection (30 days) and per website (ever). Paid accounts use
+// their monthly allowance.
 import crypto from "node:crypto";
 import { json, normalizeUrl, assertPublicHost, siteKey } from "../lib/guard.mjs";
 import { sessionEmail } from "../lib/session.mjs";
@@ -10,10 +11,21 @@ import { refreshSubscriptions } from "../lib/stripe.mjs";
 import { PLANS, monthKey } from "../lib/plans.mjs";
 import { refund } from "../lib/refund.mjs";
 
-const FREE_PER_DAY = 2; // free scans per connection per day
+const IP_DAYS = 30; // one free scan per internet connection per 30 days
+const DEV_COOKIE = "hs_dev";
+const devCookie = (v) => `${DEV_COOKIE}=${v}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${2 * 365 * 86400}`;
+function readDev(req) { const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)hs_dev=([a-f0-9-]{36})/); return m ? m[1] : null; }
 
 export default async (req, context) => {
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
+  // every visitor gets a device id; the response always carries it back
+  const devId = readDev(req) || crypto.randomUUID();
+  const res = await handle(req, context, devId);
+  res.headers.append("set-cookie", devCookie(devId));
+  return res;
+};
+
+async function handle(req, context, devId) {
   const email = await sessionEmail(req);
   let url;
   try {
@@ -38,9 +50,12 @@ export default async (req, context) => {
   if (planId === "free") {
     if (user && user.freeUsed) return json({ paywall: true, reason: "free-used", report: user.freeUsed.reportId, site: user.freeUsed.site }, 402);
     const ip = (context && context.ip) || req.headers.get("x-nf-client-connection-ip") || "unknown";
-    dayKey = "free/" + new Date().toISOString().slice(0, 10) + "/" + (await fingerprint("ip:" + ip));
-    const today = Number(await counters().get(dayKey)) || 0;
-    if (today >= FREE_PER_DAY) return json({ paywall: true, reason: "daily-limit", site }, 402);
+    const devKey = "dev/" + (await fingerprint("dev:" + devId));
+    const ipKey = "ipfree/" + (await fingerprint("ip:" + ip));
+    const used = await counters().get(devKey, { type: "json" });
+    if (used) return json({ paywall: true, reason: "free-used", report: used.reportId, site: used.site }, 402);
+    const ipUsed = await counters().get(ipKey, { type: "json" });
+    if (ipUsed && Date.now() - Date.parse(ipUsed.at) < IP_DAYS * 864e5) return json({ paywall: true, reason: "free-used", report: ipUsed.reportId, site: ipUsed.site }, 402);
     const who = await fingerprint(email || "ip:" + ip);
     const claim = await claims().setJSON(site, { who, reportId: id, at: new Date().toISOString() }, { onlyIfNew: true });
     if (!claim.modified) {
@@ -48,8 +63,11 @@ export default async (req, context) => {
       const same = existing && (existing.who === who || (email && existing.email === email));
       return json({ paywall: true, reason: same ? "free-used" : "site-used", report: existing ? existing.reportId : null, site }, 402);
     }
-    await counters().set(dayKey, String(today + 1));
-    if (user) user.freeUsed = { site, reportId: id, at: new Date().toISOString() };
+    const mark = { reportId: id, site, at: new Date().toISOString() };
+    await counters().setJSON(devKey, mark);
+    await counters().setJSON(ipKey, mark);
+    dayKey = { dev: devKey, ip: ipKey };
+    if (user) user.freeUsed = { site, reportId: id, at: mark.at };
   } else {
     const allowedBiz = plan.businesses + ent.extra;
     if (!user.businesses.includes(site)) {
@@ -79,6 +97,6 @@ export default async (req, context) => {
     return json({ error: "Couldn't start the check. Try again in a minute." }, 502);
   }
   return json({ id });
-};
+}
 
 export const config = { path: "/api/scan", method: "POST", rateLimit: { action: "rate_limit", windowLimit: 6, windowSize: 60, aggregateBy: ["ip", "domain"] } };

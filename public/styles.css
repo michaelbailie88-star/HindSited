@@ -922,3 +922,6 @@ label.check input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
 .qc-opt li { margin-bottom: 6px; }
 .qc-opt li .embed-code { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
 #buildsLink .sec-row { flex-wrap: wrap; gap: 8px 12px; }
+.hero-alt { margin-top: 6px !important; }
+.hero-alt a { font-weight: 700; }
+.how-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }

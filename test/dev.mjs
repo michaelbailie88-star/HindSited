@@ -32,7 +32,7 @@ export function startDev(port = 8100) {
       }
       let f = path.join(pub, p === "/" ? "index.html" : p);
       if (/^\/(r\/|account|reset|pricing)/.test(p)) f = path.join(pub, "index.html");
-      if (["/privacy", "/terms", "/cancel", "/help", "/builds", "/paid"].includes(p)) f = path.join(pub, p.slice(1) + ".html");
+      if (["/privacy", "/terms", "/cancel", "/help", "/builds", "/paid", "/new-website"].includes(p)) f = path.join(pub, p.slice(1) + ".html");
       if (p.startsWith("/fix/")) f = path.join(pub, "fix.html");
       if (p === "/reviews") f = path.join(pub, "booster.html");
       if (p.startsWith("/review/")) f = path.join(pub, "review.html");
