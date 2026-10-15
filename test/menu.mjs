@@ -26,7 +26,7 @@ for (const pg of ["/", "/reviews", "/quotes", "/privacy"]) {
   await p.click(".menu-btn"); await wait(150);
   ok(await isOpen() && (await expanded()) === "true", `${pg}: tapping the button opens the menu`);
   const links = await p.$$eval("#siteMenu .tools-nav a", (as) => as.map((a) => Math.round(a.getBoundingClientRect().height)));
-  ok(links.length === 3 && links.every((h) => h >= 44), `${pg}: 3 tool links, each easy to tap (${links.join("/")}px)`);
+  ok(links.length === 4 && links.every((h) => h >= 44), `${pg}: 4 menu links (incl. Help), each easy to tap (${links.join("/")}px)`);
   await p.click(".menu-btn"); await wait(150);
   ok(!(await isOpen()) && (await expanded()) === "false", `${pg}: tapping again closes it`);
 }

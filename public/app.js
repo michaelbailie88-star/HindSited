@@ -71,7 +71,7 @@ function showSignIn({ mode = "signin", next = "/account", title, lead } = {}) {
 
 const PRICES = {
   solo: { name: "Solo", for: "One business", month: 19, once: 299, perks: ["Full reports: every issue revealed", "30 website checks a month", "Fix tools: Review Booster and Quote Calculator", "Re-check after every change and watch your score go up"] },
-  agency: { name: "Agency", for: "Up to 10 businesses", month: 79, once: 999, perks: ["Everything in Solo, for 10 businesses", "300 website checks a month", "Reports and PDFs with your own logo", "Add more businesses for $6/month each"] }
+  agency: { name: "Agency", for: "Up to 10 businesses", month: 79, once: 999, perks: ["Everything in Solo, for 10 businesses", "300 website checks a month", "Reports and PDFs with your own logo", "Add more businesses for $6 CAD/month each"] }
 };
 function showPaywall(d, url, back) {
   const host = url ? new URL(url).hostname.replace(/^www\./, "") : "";
@@ -86,15 +86,15 @@ function showPaywall(d, url, back) {
     "upgrade": "Pick the plan that fits."
   }[d.reason] || "You've reached the limit of your free check.";
   const sub = d.reason === "pricing"
-    ? "Every plan gets full reports with every issue revealed, plus the tools that fix the two most common gaps: Review Booster for more Google reviews and Quote Calculator for more enquiries. Want it all done for you? I build brand-new websites from $500."
+    ? "Every plan gets full reports with every issue revealed, plus the tools that fix the two most common gaps: Review Booster for more Google reviews and Quote Calculator for more enquiries. Want it all done for you? I build brand-new websites from $500 CAD."
     : d.reason === "unlock"
     ? "Subscribe and every hidden issue is revealed straight away, with exactly where it is and how to fix it."
     : "See every issue in full, check your site whenever you change it, and get the Review Booster and Quote Calculator too.";
   const card = (k) => { const p = PRICES[k]; return `<div class="plan${k === "solo" ? " plan-main" : ""}"><h3>${p.name}</h3><p class="muted">${p.for}</p>
-    <p class="price"><b>$${p.month}</b>/month</p><p class="muted small">or $${p.once} once for lifetime access</p>
+    <p class="price"><b>$${p.month}</b> CAD/month</p><p class="muted small">or $${p.once} CAD once for lifetime access</p>
     <ul>${p.perks.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
     <button class="btn" data-plan="${k}" data-int="month">Start ${p.name} monthly</button>
-    <button class="btn ghost" data-plan="${k}" data-int="once">Pay once, $${p.once}</button></div>`; };
+    <button class="btn ghost" data-plan="${k}" data-int="once">Pay once, $${p.once} CAD</button></div>`; };
   const p = panel(`<div class="card-panel wide">
     <p class="eyebrow">${d.reason === "unlock" ? "Full report" : d.reason === "pricing" ? "Pricing" : "Keep going"}</p><h2 class="panel-h">${why}</h2>
     <p>${sub}</p>
@@ -424,8 +424,9 @@ function offersHtml({ all, id }) {
       <h4>A brand-new website, built for your business</h4>
       <p>A bug-free rebuild with a fresh, modern look. Every issue in this report is gone for good, not patched. It keeps your web address, and it's yours: you never share a password with anyone.</p>
       <ul class="ticks"><li>Designed for phones first, fast to load</li><li>Clear buttons that turn visitors into calls and bookings</li><li>Google-ready: titles, descriptions, sitemap</li><li>Keeps your web address</li><li>Hosting and updates available</li></ul>
-      <p class="offer-price">From <b>$500</b></p>
+      <p class="offer-price">From <b>$500</b> CAD</p>
       <div class="offer-act">${id ? `<a class="btn" href="/fix/${esc(id)}">Start my new website</a>` : `<button class="btn" type="button" data-req="redesign">Request a new website</button>`}<a class="linkish" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>
+      <p class="muted small offer-fine">50% to start, 50% at launch, then $25 CAD a month for hosting and updates. <a href="/help#new-site" target="_blank">How it works ↗</a></p>
       <p class="muted small offer-fine">About 5 minutes. No cost to ask, and no work or charge until you agree to a quote.${id ? ` <button class="linkish" type="button" data-req="redesign">Or just send me a message</button>` : ""}</p>
       <div class="req" data-for="redesign" hidden></div>
     </article></div>`;

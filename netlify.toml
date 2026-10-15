@@ -69,6 +69,21 @@
   to = "/cancel.html"
   status = 200
 
+[[redirects]]
+  from = "/help"
+  to = "/help.html"
+  status = 200
+
+[[redirects]]
+  from = "/builds"
+  to = "/builds.html"
+  status = 200
+
+[[redirects]]
+  from = "/paid"
+  to = "/paid.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -92,6 +107,16 @@
 
 [[headers]]
   for = "/fix/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/builds"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/paid"
   [headers.values]
     X-Frame-Options = "DENY"
 

@@ -30,7 +30,8 @@ const AUDIT = () => {
   const name = (el) => { let s = el.tagName.toLowerCase(); if (el.id) s += "#" + el.id; else if (el.className && typeof el.className === "string") s += "." + el.className.trim().split(/\s+/).slice(0, 2).join("."); const t = (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().replace(/\s+/g, " ").slice(0, 30); return t ? `${s} "${t}"` : s; };
   const visible = (el) => { const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity === 0) return false; const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1; };
   const inScroller = (el) => { for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const ox = getComputedStyle(a).overflowX; if (ox === "auto" || ox === "scroll" || ox === "hidden" || ox === "clip") return a; } return null; };
-  const inClosed = (el) => { const d = el.closest("details:not([open])"); return !!d && !el.closest("summary"); };
+  // hidden if any closed <details> above it doesn't own it through its own summary
+  const inClosed = (el) => { for (let d = el.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) { const sum = d.querySelector(":scope > summary"); if (!(sum && sum.contains(el))) return true; } return false; };
   const decor = (el) => !!el.closest(".dial, .chart-card, .pw-show, .lc-blur, .lock-ic");
   const srOnly = (el) => { for (let a = el; a; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.clip && cs.clip !== "auto" || cs.clipPath && cs.clipPath !== "none" || a.classList?.contains("sr") || a.classList?.contains("skip") || a.classList?.contains("hp")) return true; } return false; };
   if (document.documentElement.scrollWidth > vw + 1) out.push(`page scrolls sideways (${document.documentElement.scrollWidth}px wide on a ${vw}px screen)`);
@@ -196,6 +197,7 @@ await o.$eval('#aboutForm input[name=business]', (e) => (e.value = "")); await o
 await o.type('#aboutForm input[name=business]', "Cedar Bakery and Café on Main Street"); await o.click('#aboutForm input[value="Online booking"]'); await o.click('#aboutForm input[value="Photo gallery or portfolio"]');
 await o.type('#aboutForm textarea[name=note]', "We'd love a warmer look, bigger photos of the bread, and a simple way to order cakes for pick-up.");
 await o.click('#aboutForm button[type=submit]'); await o.waitForSelector("[data-d]"); await check(o, "fix-domain");
+await o.evaluate(() => document.querySelectorAll(".fx-more").forEach((d) => (d.open = true))); await check(o, "fix-domain-open");
 await o.click("[data-stuck]"); await check(o, "fix-stuck"); await o.click("[data-stuck]");
 await o.click('[data-d="locked"]'); await o.waitForSelector("#gotIn"); await check(o, "fix-recover");
 await o.click("#skip"); await o.waitForSelector("#send"); await check(o, "fix-send");
@@ -214,6 +216,9 @@ await o.click("#kitForm button[type=submit]"); await o.waitForSelector("#mats .m
 await check(o, "booster-dashboard-paid");
 const rslug = (await o.evaluate(() => document.body.innerText)).match(/\/review\/([a-z0-9-]+)/)[1];
 
+// help, builds, payment pages
+await o.goto(BASE + "/builds"); await o.waitForSelector("#newB"); await check(o, "builds-empty");
+await o.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true))); await check(o, "builds-how-open");
 // ---------------------------------------------------------------- public pages
 const cD = await b.createBrowserContext(); const v = await page(cD);
 await v.goto(BASE + "/review/" + rslug); await v.waitForSelector(".rp-btn"); await check(v, "review-public");
@@ -222,6 +227,10 @@ await v.goto(BASE + "/q/" + qslug); await v.waitForSelector(".calc-amount"); awa
 await v.type('input[name="name"]', "Avery"); await v.type('input[name="email"]', "avery@example-home.com"); await v.click(".calc-btn"); await v.waitForSelector(".calc-done"); await check(v, "quote-public-sent");
 const host = http.createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;padding:16px;font-family:sans-serif"><h1>Client site</h1><script src="${BASE}/embed.js" data-calc="${qslug}" async></script>`); }); await new Promise((r) => host.listen(8150, "127.0.0.1", r));
 await v.goto("http://127.0.0.1:8150/"); await v.waitForSelector("iframe"); await new Promise((r) => setTimeout(r, 2000)); await check(v, "quote-embed");
+await v.goto(BASE + "/help"); await v.waitForSelector(".hq"); await check(v, "help");
+await v.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true))); await check(v, "help-all-open");
+await v.goto(BASE + "/help"); await v.waitForSelector("#hq"); await v.type("#hq", "domain"); await check(v, "help-search");
+for (const k of ["deposit", "launch", "card", "cancelled", "bad"]) { await v.goto(BASE + "/paid?k=" + k); await v.waitForSelector("#paid h1"); await check(v, "paid-" + k); }
 await v.goto(BASE + "/r/does-not-exist-000000000000000000"); await new Promise((r) => setTimeout(r, 2500)); await check(v, "report-missing");
 
 console.log(`\n${screens} screens x ${WIDTHS.length} widths checked. ${problems} problems.` + (errors.length ? `\nPAGE ERRORS: ${errors.join(" | ")}` : ""));

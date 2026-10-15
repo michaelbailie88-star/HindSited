@@ -1,7 +1,7 @@
 // A tiny stand-in for the parts of the Stripe API HindSited uses.
 import http from "node:http";
 export const state = { sessions: {}, subs: {}, customers: 0 };
-const PRICES = { hindsited_solo_month: "price_solo_m", hindsited_solo_once: "price_solo_o", hindsited_agency_month: "price_ag_m", hindsited_agency_once: "price_ag_o", hindsited_extra_business_month: "price_extra_m" };
+const PRICES = { hindsited_solo_month: "price_solo_m", hindsited_solo_once: "price_solo_o", hindsited_agency_month: "price_ag_m", hindsited_agency_once: "price_ag_o", hindsited_extra_business_month: "price_extra_m", tlcc_hosting_month: "price_hosting_m" };
 function parse(body) { const o = {}; for (const [k, v] of new URLSearchParams(body)) o[k] = v; return o; }
 export function startStripeMock(port = 8199) {
   return new Promise((res) => {
@@ -15,7 +15,7 @@ export function startStripeMock(port = 8199) {
       if (p === "/v1/checkout/sessions" && req.method === "POST") {
         const id = "cs_test_" + Object.keys(state.sessions).length + "x";
         const md = {}; for (const k in b) { const m = k.match(/^metadata\[(\w+)\]$/); if (m) md[m[1]] = b[k]; }
-        state.sessions[id] = { id, mode: b.mode, customer: b.customer, client_reference_id: b.client_reference_id, metadata: md, status: "open", payment_status: "unpaid", success_url: b.success_url.replace("{CHECKOUT_SESSION_ID}", id), cancel_url: b.cancel_url, price: b["line_items[0][price]"] };
+        state.sessions[id] = { id, mode: b.mode, customer: b.customer, client_reference_id: b.client_reference_id, metadata: md, status: "open", payment_status: "unpaid", success_url: b.success_url.replace("{CHECKOUT_SESSION_ID}", id), cancel_url: b.cancel_url, price: b["line_items[0][price]"], body: b };
         return send({ id, url: `http://127.0.0.1:${port}/pay/${id}` });
       }
       let m;
@@ -24,7 +24,8 @@ export function startStripeMock(port = 8199) {
         const x = state.subs[m[1]];
         if (!x) return send({ error: { message: "no such sub" } }, 404);
         if (req.method === "DELETE") x.status = "canceled";
-        return send(x);
+        if (req.method === "POST" && "cancel_at" in b) x.cancel_at = b.cancel_at ? Number(b.cancel_at) : null;
+        return send(u.searchParams.get("expand[0]") === "latest_invoice" ? { ...x, latest_invoice: x.latest_invoice || { status: "paid", created: Math.floor(Date.now() / 1000), amount_remaining: 0 } } : x);
       }
       if (p === "/v1/billing_portal/sessions") return send({ url: `http://127.0.0.1:${port}/portal/${b.customer}` });
       return send({ error: { message: "unhandled " + p } }, 404);

@@ -100,7 +100,7 @@
         '<div class="foot-brand"><a class="brand" href="/" aria-label="HindSited home"><span class="brand-mark" aria-hidden="true"></span><span class="wm">Hind<span>Sited</span></span></a>' +
           '<p>Made by <a href="https://thelazycreatorcompany.com" rel="noopener" target="_blank">The Lazy Creator Company</a>, a one-person web studio in Guelph, Ontario.</p>' +
           '<p class="foot-trust">Built for business owners. Your information is never sold, shared or used for marketing.</p></div>' +
-        '<nav class="foot-col" aria-label="Tools"><h3>Tools</h3><a href="/">Website check</a><a href="/reviews">Review Booster</a><a href="/quotes">Quote Calculator</a><a href="/account">My dashboard</a></nav>' +
+        '<nav class="foot-col" aria-label="Tools"><h3>Tools</h3><a href="/">Website check</a><a href="/reviews">Review Booster</a><a href="/quotes">Quote Calculator</a><a href="/account">My dashboard</a><a href="/help">Help: how everything works</a></nav>' +
         '<nav class="foot-col" aria-label="Policies"><h3>Policies</h3><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a><a href="/cancel">Cancellation and refunds</a><a href="/account#settings">Manage or cancel my plan</a></nav>' +
         '<div class="foot-col"><h3>Contact</h3><a class="foot-mail" href="mailto:' + STUDIO + '">' + STUDIO + '</a><a href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">thelazycreatorcompany.com</a><p>Guelph, ON, Canada</p></div>' +
       '</div>' +

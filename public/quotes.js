@@ -178,6 +178,16 @@ function paywall(reason) {
   if ($("#pwBack")) $("#pwBack").onclick = dashboard;
 }
 
+// step-by-step embed instructions, checked against each platform's help pages
+const INSTALL = [
+  ["Wix", ["Open your site in the Wix Editor.", "Click <b>Add Elements</b> (the + on the left), then <b>Embed Code</b>, then <b>Popular Embeds</b>, then <b>Embed HTML</b>.", "Click the new box on your page, then <b>Enter Code</b>.", "Paste your code and click <b>Apply</b>.", "Drag the box where you want it, make it wide enough, then <b>Publish</b>."]],
+  ["Squarespace", ["Open the page and click <b>Edit</b>.", "Click <b>Add Block</b> where you want it and choose <b>Code</b>.", "Click the block's pencil icon and paste your code.", "Click <b>Save</b>."], "Some Squarespace plans don't run code in code blocks. If it doesn't appear, use the button method."],
+  ["WordPress", ["Edit the page.", "Click the <b>+</b> (block inserter) and search for <b>Custom HTML</b>.", "Paste your code into the block.", "Click <b>Update</b> (or <b>Publish</b>)."], "On WordPress.com, adding code needs a plan that allows it. If it doesn't show, use the button method."],
+  ["Shopify", ["In Shopify admin go to <b>Online Store</b>, then <b>Themes</b>, then <b>Customize</b>.", "Open the page you want, click <b>Add section</b> and choose <b>Custom Liquid</b>.", "Paste your code into the Custom Liquid box.", "Click <b>Save</b>."], "Most current Shopify themes include Custom Liquid. If yours doesn't, use the button method."],
+  ["GoDaddy", ["Open your Websites + Marketing site and click <b>Edit Website</b>.", "Click <b>Add Section</b>, search for <b>HTML</b>, and add it.", "Paste your code into the <b>Custom Code</b> box.", "Click <b>Publish</b>."]],
+  ["Webflow", ["In the Designer, open the <b>Add</b> panel and drag a <b>Code Embed</b> onto the page.", "Paste your code and click <b>Save & Close</b>.", "<b>Publish</b> the site. It shows as a placeholder in the Designer and appears on the live site."], "Webflow needs a paid site or workspace plan for code embeds. If you don't have one, use the button method."]
+];
+
 // ---------------------------------------------------------------- dashboard
 async function dashboard() {
   const c = current;
@@ -192,12 +202,21 @@ async function dashboard() {
       <div class="kit-head-actions">${state.calcs.length > 1 ? `<select id="cPick" aria-label="Choose calculator">${state.calcs.map((x) => `<option value="${esc(x.slug)}"${x.slug === c.slug ? " selected" : ""}>${esc(x.business)}</option>`).join("")}</select>` : ""}
         <button class="tool" id="cEdit">Edit services and prices</button><button class="tool" id="cNew">New calculator</button></div></div>
     ${!c.active ? `<div class="kit-sec"><p><b>Your calculator is paused.</b> Visitors see your phone number instead of prices. Upgrade to switch it back on with unlimited quote requests.</p><a class="btn" href="/account">See plans</a></div>` : ""}
-    <section class="kit-sec"><h3>1. Put it on your website</h3>
-      <p>Paste this one line where you want the calculator to appear. It works on WordPress, Wix, Squarespace, Shopify, GoDaddy and hand-built sites (use an “HTML” or “Embed code” block).</p>
-      <code class="embed-code" id="emb">${esc(embed)}</code>
-      <div class="btns"><button class="tool" data-copy="${esc(embed)}">Copy code</button></div>
+    <section class="kit-sec"><h3>How it works</h3>
+      <ol class="qc-how"><li>A visitor picks a service, sets the quantity and ticks extras, and <b>sees a price straight away</b>.</li><li>They leave their name and email or phone to get the quote.</li><li><b>You get an email instantly</b> with what they picked and the price they saw${c.notify ? ` (sent to <span class="nowrap-email">${esc(c.notify)}</span>)` : ""}. It's also saved below.</li><li>Reply fast: people who hear back within the hour are far more likely to book.</li></ol>
+      <p class="muted small">Your calculator lives at its own link on HindSited. Put it in front of customers with any of the options below. <a href="/help#quotes" target="_blank">Full help ↗</a></p>
     </section>
-    <section class="kit-sec"><h3>2. Or share the link and QR code</h3>
+    <section class="kit-sec"><h3>1. Add it to your website</h3>
+      <div class="qc-opt"><h4>Easiest: a button (works on every website, no code)</h4>
+        <ol><li>In your website editor, add a <b>Button</b> where you want it (near the top of your homepage is best).</li><li>Set the text to something like <b>Get an instant price</b>.</li><li>Set the button's link to your calculator link: <code class="embed-code">${esc(url)}</code> <button class="tool" data-copy="${esc(url)}">Copy link</button></li><li>Publish your site.</li></ol></div>
+      <div class="qc-opt"><h4>Or show it right on a page (embed code)</h4>
+        <p>Copy this one line, then follow the steps for your website builder:</p>
+        <code class="embed-code" id="emb">${esc(embed)}</code>
+        <div class="btns"><button class="tool" data-copy="${esc(embed)}">Copy code</button></div>
+        ${INSTALL.map(([n, steps, note]) => `<details class="hq hq-sub"><summary>${esc(n)}</summary><div class="hq-a"><ol>${steps.map((x) => `<li>${x}</li>`).join("")}</ol>${note ? `<p class="muted small">${note}</p>` : ""}</div></details>`).join("")}
+        <p class="muted small">Don't know what your site is built on? Your HindSited report shows it under <b>About your website</b>. If the calculator doesn't appear on your live site, use the button method instead.</p></div>
+    </section>
+    <section class="kit-sec"><h3>2. Share the link and QR code too</h3>
       <div class="share-row"><div><code class="embed-code">${esc(url)}</code><div class="btns"><button class="tool" data-copy="${esc(url)}">Copy link</button><a class="tool" href="${esc(url)}" target="_blank" rel="noopener">Open</a></div>
         <p class="muted small">Great for Instagram bios, Google Business Profile, email signatures and flyers. No website needed.</p></div>
         <div class="qr-box">${qrSvg}<button class="tool" id="qrDl">Download QR</button></div></div>

@@ -48,7 +48,7 @@ export async function renderDashboard(el, { me, flash, api, upgrade, refreshMe }
         <div class="stat-act">${free ? `<button class="btn small-btn" id="upgrade" type="button">See plans</button>` : ""}${d.hasBilling ? `<button class="btn ghost small-btn" id="billing" type="button">Manage billing</button>` : ""}</div></section>
       <section class="stat"><p class="stat-k">Website checks</p>${usage}</section>
       <section class="stat"><p class="stat-k">Businesses</p><p class="stat-big">${(d.businesses || []).length}<small> of ${bizAllowed}</small></p><p class="stat-sub">${(d.businesses || []).length ? esc(d.businesses.join(", ")) : "None checked yet"}</p>
-        ${d.plan === "agency" ? `<div class="stat-act"><button class="btn ghost small-btn" id="addBiz" type="button">Add a business ($6/mo)</button></div>` : ""}</section>
+        ${d.plan === "agency" ? `<div class="stat-act"><button class="btn ghost small-btn" id="addBiz" type="button">Add a business ($6 CAD/mo)</button></div>` : ""}</section>
       <section class="stat"><p class="stat-k">Quote requests</p><p class="stat-big">${leadsTotal}</p><p class="stat-sub">from ${calcs.length} calculator${calcs.length === 1 ? "" : "s"}</p></section>
     </div>
 
@@ -59,7 +59,7 @@ export async function renderDashboard(el, { me, flash, api, upgrade, refreshMe }
     <section class="dash-sec"><div class="sec-row"><h3>Your reports</h3><span class="muted small">${(d.reports || []).length}</span></div>
       ${reports ? `<ul class="dash-list reports">${reports}</ul>` : `<p class="muted">No reports yet. Run a website check above.</p>`}</section>
 
-    <div class="tools-head"><h3 class="sub-h">Your fix tools</h3><p class="muted small">Included with ${free ? "every plan (free to try)" : "your plan"}: they fix the two gaps we find most often.</p></div>
+    <div class="tools-head"><h3 class="sub-h">Your fix tools</h3><p class="muted small">Included with ${free ? "every plan (free to try)" : "your plan"}: they fix the two gaps we find most often. <a href="/help#fix">How fixing works</a></p></div>
     <div class="tool-grid">
       <section class="dash-sec"><div class="sec-row"><h3>Review Booster</h3><a class="linkish" href="/reviews">${kits.length ? "Open" : "Set up"} →</a></div>
         ${kitRows ? `<ul class="dash-list">${kitRows}</ul>` : `<p class="muted">Fixes "no reviews on your homepage": more Google reviews with QR cards, messages and a review page.</p>`}</section>
@@ -77,6 +77,7 @@ export async function renderDashboard(el, { me, flash, api, upgrade, refreshMe }
         <button class="btn" type="submit">Save branding</button><span class="tool-note" id="bNote" role="status"></span>
       </form></section>` : ""}
 
+    ${owner ? `<section class="dash-sec" id="buildsLink"><div class="sec-row"><h3>New-website builds</h3><a class="btn small-btn" href="/builds">Open builds and payments</a></div><p class="muted small">Make deposit and launch payment links, see who has paid, and who is behind on hosting.</p></section>` : ""}
     ${owner ? `<section class="dash-sec" id="moderate"><div class="sec-row"><h3>Reviews waiting for you</h3><span class="muted small">${(rv.all || []).filter((r) => r.status === "pending").length} pending</span></div>
       ${(rv.all || []).length ? `<ul class="mod-list">${rv.all.map((r) => `<li data-id="${esc(r.id)}"><div><span class="stars">${"★".repeat(r.rating)}<span>${"★".repeat(5 - r.rating)}</span></span> <b>${esc(r.name)}</b>${r.business ? " · " + esc(r.business) : ""} <span class="muted small mod-email">${esc(r.email)} · ${day(r.at)}</span></div><p>${esc(r.text)}</p>
         <div class="mod-act"><span class="mod-st ${esc(r.status)}">${esc(r.status)}</span>${r.status !== "approved" ? `<button class="btn small-btn" data-act="approve" type="button">Approve</button>` : ""}${r.status !== "rejected" ? `<button class="btn ghost small-btn" data-act="reject" type="button">Hide</button>` : ""}<button class="linkish" data-act="delete" type="button">Delete</button></div></li>`).join("")}</ul>` : `<p class="muted">No reviews yet.</p>`}</section>` : ""}
