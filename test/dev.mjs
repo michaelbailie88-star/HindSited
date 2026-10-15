@@ -15,7 +15,7 @@ const routes = {};
 for (const m of Object.values(mods)) { const p = m.config.path; (Array.isArray(p) ? p : [p]).forEach((x) => (routes[x] = m)); }
 export const { outbox } = await import("../netlify/lib/mail.mjs");
 const pub = path.join(here, "..", "public");
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".txt": "text/plain", ".png": "image/png" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".txt": "text/plain", ".png": "image/png", ".jpg": "image/jpeg" };
 export function startDev(port = 8100) {
   return new Promise((res) => {
     const s = http.createServer(async (req, rsp) => {

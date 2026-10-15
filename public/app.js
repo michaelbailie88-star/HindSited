@@ -1,6 +1,7 @@
 import { buildReport, CATEGORIES } from "./rules.js";
 import { renderAuth, renderForgot, renderReset } from "./auth-ui.js";
 import { renderDashboard } from "./dashboard.js";
+import { estimate, STAGES, money as cad } from "./loss.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -333,6 +334,8 @@ async function showReport(report, scan, meta = {}) {
     <div class="devices" aria-hidden="true">${ms ? `<div class="dev-phone"><img src="${ms.data}" alt=""></div>` : ""}${ds ? `<div class="dev-desk"><img src="${ds.data}" alt=""></div>` : ""}</div>
   </div>`;
 
+  if (report.findings.length || hid.count) html += lossPanel();
+
   if (locked && hid.count) {
     const sevLine = ["Fix now", "Fix soon", "Worth fixing"].filter((s) => hid.bySeverity[s]).map((s) => `<span class="chip ${sevClass(s)}">${hid.bySeverity[s]} ${s.toLowerCase()}</span>`).join("");
     html += `<div class="lock-bar no-print"><div><p class="lock-k"><span class="lock-ic" aria-hidden="true"></span>Free report: showing ${all - hid.count} of ${all} issues</p>
@@ -393,7 +396,7 @@ async function showReport(report, scan, meta = {}) {
 
   html += meta.brand
     ? `<div class="cta"><div><h3>Want these fixed?</h3><p>${esc(meta.brand.name)} can take care of every issue in this report.${meta.brand.site ? ` <span class="print-only">${esc(meta.brand.site.replace(/^https?:\/\//, ""))}</span>` : ""}</p></div>${meta.brand.site ? `<a class="btn" href="${esc(meta.brand.site)}" target="_blank" rel="noopener">Get in touch</a>` : ""}</div>`
-    : offersHtml({ all, id: meta.id });
+    : offersHtml({ all, id: meta.id, before: ds && ds.data });
   html += `<div class="again no-print"><button id="again">Check another site</button></div></div>`;
 
   const rep = $("#report");
@@ -411,11 +414,95 @@ async function showReport(report, scan, meta = {}) {
   window.onbeforeprint = () => document.querySelectorAll("details.cat").forEach((d) => d.setAttribute("open", ""));
   rep.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => showPaywall({ reason: "unlock", site: meta.site || host }, null, reportPath)));
   wireOffers(rep, { reportId: meta.id, host, locked, back: reportPath });
+  wireLoss(rep, { findings: report.findings, hidden: locked && hid.count ? hid : null, locked, back: reportPath, host, offers: !meta.brand });
+  wireCompare(rep);
   view("report");
 }
 
+// ---------------------------------------------------------------- before & after (their site vs a real build)
+const BUILDS = [
+  { key: "staged-right-carpentry", name: "Staged Right Carpentry", what: "carpentry, Nova Scotia" },
+  { key: "creative-acoustics", name: "Creative Acoustics", what: "guitar maker" },
+  { key: "wolfe-healings", name: "Wolfe Healings", what: "wellness practice" }
+];
+function compareHtml(before) {
+  const b = BUILDS[0];
+  return `<div class="ba" data-ba>
+    <p class="ba-h">Drag to compare: your site today vs. a site I built</p>
+    <div class="ba-tabs" role="group" aria-label="Choose a site I built">${BUILDS.map((x, i) => `<button type="button" class="ba-tab${i ? "" : " on"}" data-b="${i}" aria-pressed="${i ? "false" : "true"}">${esc(x.name)}</button>`).join("")}</div>
+    <div class="ba-frame" style="--p:50%">
+      <img class="ba-img" src="${esc(before)}" alt="Your website today (top of the homepage)">
+      <div class="ba-after"><img class="ba-img" src="/img/builds/${b.key}.jpg" alt="${esc(b.name)}, a website built by The Lazy Creator Company"></div>
+      <span class="ba-lab ba-l">Your site today</span><span class="ba-lab ba-r">Built by me</span>
+      <span class="ba-line" aria-hidden="true"><span class="ba-knob"></span></span>
+      <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Slide to compare your site with a site I built">
+    </div>
+    <p class="muted small ba-cap">Right side: <a class="ba-link" href="https://thelazycreatorcompany.com/work/${b.key}.html" target="_blank" rel="noopener">${esc(b.name)}</a> (${esc(b.what)}), a real client site I built. Yours would be designed for your business.</p>
+  </div>`;
+}
+function wireCompare(root) {
+  const box = root.querySelector("[data-ba]"); if (!box) return;
+  const frame = box.querySelector(".ba-frame"), range = box.querySelector(".ba-range");
+  range.oninput = () => frame.style.setProperty("--p", range.value + "%");
+  box.querySelectorAll(".ba-tab").forEach((t) => (t.onclick = () => {
+    const b = BUILDS[+t.dataset.b];
+    box.querySelectorAll(".ba-tab").forEach((x) => { x.classList.toggle("on", x === t); x.setAttribute("aria-pressed", x === t ? "true" : "false"); });
+    const img = box.querySelector(".ba-after img"); img.src = `/img/builds/${b.key}.jpg`; img.alt = `${b.name}, a website built by The Lazy Creator Company`;
+    const a = box.querySelector(".ba-link"); a.href = `https://thelazycreatorcompany.com/work/${b.key}.html`; a.textContent = b.name;
+    a.nextSibling.textContent = ` (${b.what}), a real client site I built. Yours would be designed for your business.`;
+  }));
+}
+
+// ---------------------------------------------------------------- what is this costing you?
+function lossPanel() {
+  return `<section class="loss no-print" id="loss">
+    <div class="loss-head"><p class="eyebrow">What is this costing you?</p><h3>Put in your own numbers</h3>
+      <p class="sub">HindSited works out where the issues on this site are most likely losing you customers, and roughly what that's worth a month. Your numbers stay on this device.</p></div>
+    <form class="loss-in" novalidate>
+      <label><span>Enquiries you get a month now <span class="opt">calls, emails and form messages</span></span><input name="enquiries" inputmode="numeric" placeholder="e.g. 20" autocomplete="off"></label>
+      <label><span>Out of every 10 enquiries, how many become customers?</span><input name="perTen" inputmode="decimal" placeholder="e.g. 3" autocomplete="off"></label>
+      <label><span>What's an average customer worth to you? <span class="opt">$ CAD</span></span><input name="value" inputmode="decimal" placeholder="e.g. 400" autocomplete="off"></label>
+    </form>
+    <div class="loss-out" aria-live="polite"></div>
+  </section>`;
+}
+function wireLoss(root, { findings, hidden, locked, back, host, offers }) {
+  const box = root.querySelector("#loss"); if (!box) return;
+  const f = box.querySelector(".loss-in"), out = box.querySelector(".loss-out");
+  const KEY = "hs-loss";
+  try { const saved = JSON.parse(localStorage.getItem(KEY) || "{}"); for (const k of ["enquiries", "perTen", "value"]) if (saved[k] != null) f[k].value = saved[k]; } catch {}
+  const num = (v) => { const n = Number(String(v).replace(/[$,\s]/g, "")); return Number.isFinite(n) ? n : NaN; };
+  const draw = () => {
+    const q = num(f.enquiries.value), t = num(f.perTen.value), v = num(f.value.value);
+    try { localStorage.setItem(KEY, JSON.stringify({ enquiries: f.enquiries.value, perTen: f.perTen.value, value: f.value.value })); } catch {}
+    if (!f.enquiries.value || !f.perTen.value || !f.value.value) { out.innerHTML = `<p class="muted loss-wait">Fill in all three to see your estimate.</p>`; return; }
+    const bad = !(q >= 1 && q <= 100000) ? "Enquiries a month should be a number of 1 or more." : !(t >= 0 && t <= 10) ? "Customers out of 10 should be between 0 and 10." : !(v > 0 && v <= 10000000) ? "Customer value should be a dollar amount above 0." : "";
+    if (bad) { out.innerHTML = `<p class="form-err">${bad}</p>`; return; }
+    const r = estimate({ findings, hidden, enquiries: q, perTen: t, value: v });
+    const max = Math.max(...r.stages.map((s) => s.month), 1);
+    out.innerHTML = `<div class="loss-big"><p class="loss-k">Estimated loss</p><p><b>${cad(r.lostMonth)}</b> a month</p><p class="loss-yr">about ${cad(r.lostYear)} a year</p></div>
+      <p class="loss-sum">If these issues were fixed, you'd likely get about <b>${Math.round(r.could)}</b> enquiries a month instead of ${Math.round(q)}: roughly <b>${r.lostEnq < 10 ? r.lostEnq.toFixed(1) : Math.round(r.lostEnq)} more</b>.</p>
+      <h4 class="loss-sh">Where you're losing them</h4>
+      <div class="loss-stages">${r.stages.map((s) => `<div class="loss-stage${s.key === "hidden" ? " is-hidden" : ""}">
+        <div class="ls-top"><b>${esc(STAGES[s.key].label)}</b><span>${cad(s.month)}/mo</span></div>
+        <div class="ls-bar"><i style="width:${Math.max(3, Math.round((s.month / max) * 100))}%"></i></div>
+        <p class="ls-note">${esc(STAGES[s.key].note)}</p>
+        ${s.key === "hidden" ? `<p class="ls-hid">${s.items.length} hidden issue${s.items.length === 1 ? "" : "s"} account for about <b>${cad(s.month)}</b> a month. <button class="linkish unlock-btn" type="button">Unlock to see which</button></p>`
+          : `<ul class="ls-items">${s.items.slice(0, 4).map((x) => `<li><span>${esc(x.title)}</span><b>${cad(x.month)}</b></li>`).join("")}${s.items.length > 4 ? `<li class="muted"><span>+ ${s.items.length - 4} more</span><b>${cad(s.items.slice(4).reduce((a, x) => a + x.month, 0))}</b></li>` : ""}</ul>`}
+      </div>`).join("")}</div>
+      ${offers ? `<p class="loss-cta">A new website fixes all of these at once. <a href="#offers">See the offer</a></p>` : ""}
+      <details class="loss-how"><summary>How we estimate this</summary>
+        <p>Each issue is given a share of enquiries it typically costs a small-business site (our rule-of-thumb figures, not measured on your site). We combine them, so two issues don't count the same visitor twice${r.capped ? ", and we cap the total so it never says you could get more than 4 times the enquiries you get now" : ""}. Then: lost enquiries × your customers out of 10 × your customer value.</p>
+        <ul class="ls-shares">${r.items.filter((x) => !x.hidden).map((x) => `<li><span>${esc(x.title)}</span><b>${Math.round(x.share * 100)}%</b></li>`).join("")}${hidden ? `<li><span>Each hidden issue (by how serious it is)</span><b>1 to 5%</b></li>` : ""}</ul>
+        <p class="muted small">This is an estimate to help you decide what to fix first, not a promise. Real results depend on your market, your prices and how quickly you reply.</p></details>`;
+    out.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => showPaywall({ reason: "unlock", site: host }, null, back)));
+  };
+  f.oninput = draw; f.onsubmit = (e) => e.preventDefault();
+  draw();
+}
+
 // ---------------------------------------------------------------- the offer on every report
-function offersHtml({ all, id }) {
+function offersHtml({ all, id, before }) {
   const n = all ? all + " issue" + (all === 1 ? "" : "s") : "every issue";
   return `<div class="offers no-print" id="offers">
     <div class="offers-head"><p class="eyebrow">Want these fixed?</p><h3>Get a new website with ${esc(n)} gone</h3>
@@ -423,6 +510,7 @@ function offersHtml({ all, id }) {
     <article class="offer offer-one">
       <h4>A brand-new website, built for your business</h4>
       <p>A bug-free rebuild with a fresh, modern look. Every issue in this report is gone for good, not patched. It keeps your web address, and it's yours: you never share a password with anyone.</p>
+      ${before ? compareHtml(before) : ""}
       <ul class="ticks"><li>Designed for phones first, fast to load</li><li>Clear buttons that turn visitors into calls and bookings</li><li>Google-ready: titles, descriptions, sitemap</li><li>Keeps your web address</li><li>Hosting and updates available</li></ul>
       <p class="offer-price">From <b>$500</b> CAD</p>
       <div class="offer-act">${id ? `<a class="btn" href="/fix/${esc(id)}">Start my new website</a>` : `<button class="btn" type="button" data-req="redesign">Request a new website</button>`}<a class="linkish" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>

@@ -42,6 +42,34 @@ let t = await text(p);
 ok(!!(await p.$(".rep-head")) && /Free report: showing \d+ of \d+ issues/.test(t), "free scan runs with no account and shows the free report");
 ok((await p.$$(".locked-card")).length > 0 && !(await p.$("#savePdf")), "most serious issues are shown as locked cards; no PDF on free reports");
 ok(!!(await p.$("#offers")) && /Start my new website/.test(t) && /From \$500/.test(t) && !/Fix It|I'll fix/.test(t), "report offers one thing: a new website (no 'I'll fix it' promise)");
+// ---- what is this costing you? (owner's own numbers)
+ok(/Fill in all three/.test(await p.$eval("#loss", (e) => e.innerText)), "loss calculator waits for the owner's own numbers");
+await p.type('#loss input[name=enquiries]', "20"); await p.type('#loss input[name=perTen]', "3"); await p.type('#loss input[name=value]', "400");
+await p.waitForSelector(".loss-big");
+{
+  const { estimate } = await import("../public/loss.js");
+  const apiR = await (await fetch(BASE + "/api/report?id=" + id)).json();
+  const want = estimate({ findings: apiR.report.findings, hidden: apiR.hidden, enquiries: 20, perTen: 3, value: 400 });
+  const shown = await p.$eval(".loss-big b", (e) => e.textContent);
+  ok(shown === "$" + Math.round(want.lostMonth).toLocaleString("en-CA") && want.lostMonth > 0, `loss estimate matches the formula (${shown}/month)`);
+  const sumParts = want.items.reduce((x, i) => x + i.month, 0);
+  ok(Math.abs(sumParts - want.lostMonth) < 0.01, "each issue's share adds up exactly to the total");
+  ok(want.could <= 20 * 4 + 1e-9, "never claims more than 4x the enquiries they get now");
+}
+ok(!!(await p.$(".loss-stage.is-hidden .unlock-btn")) && /hidden issues? account for about/.test(await p.$eval("#loss", (e) => e.innerText)), "free report: hidden issues show their cost with an unlock button");
+ok(/How we estimate this/.test(await p.$eval("#loss", (e) => e.innerText)), "the estimate shows how it's worked out");
+await p.$eval('#loss input[name=perTen]', (e) => { e.value = "12"; e.dispatchEvent(new Event("input", { bubbles: true })); });
+ok(/between 0 and 10/.test(await p.$eval(".loss-out", (e) => e.innerText)), "bad numbers get a plain message");
+await p.$eval('#loss input[name=perTen]', (e) => { e.value = "3"; e.dispatchEvent(new Event("input", { bubbles: true })); });
+// ---- before & after
+ok(!!(await p.$("[data-ba] .ba-frame img")) && (await p.$eval(".ba-frame > img", (e) => e.src.startsWith("data:image"))), "before/after uses the customer's real screenshot");
+await p.$eval(".ba-range", (e) => { e.value = "20"; e.dispatchEvent(new Event("input", { bubbles: true })); });
+ok((await p.$eval(".ba-frame", (e) => e.style.getPropertyValue("--p"))) === "20%", "slider moves the divide");
+await p.click('.ba-tab[data-b="1"]');
+ok((await p.$eval(".ba-after img", (e) => e.getAttribute("src"))) === "/img/builds/creative-acoustics.jpg" && /Creative Acoustics/.test(await p.$eval(".ba-cap", (e) => e.innerText)), "tabs switch to another real build, with its name and link");
+ok(await p.evaluate(async () => (await fetch("/img/builds/staged-right-carpentry.jpg")).ok), "build screenshots are served");
+await p.reload(); await p.waitForSelector(".loss-big");
+ok((await p.$eval('#loss input[name=value]', (e) => e.value)) === "400", "the owner's numbers are remembered on this device");
 await p.screenshot({ path: out("p2-free-report.png"), fullPage: true });
 
 // ---- the lock is enforced on the server

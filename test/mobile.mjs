@@ -32,7 +32,7 @@ const AUDIT = () => {
   const inScroller = (el) => { for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const ox = getComputedStyle(a).overflowX; if (ox === "auto" || ox === "scroll" || ox === "hidden" || ox === "clip") return a; } return null; };
   // hidden if any closed <details> above it doesn't own it through its own summary
   const inClosed = (el) => { for (let d = el.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) { const sum = d.querySelector(":scope > summary"); if (!(sum && sum.contains(el))) return true; } return false; };
-  const decor = (el) => !!el.closest(".dial, .chart-card, .pw-show, .lc-blur, .lock-ic");
+  const decor = (el) => !!el.closest(".dial, .chart-card, .pw-show, .lc-blur, .lock-ic, .ba-frame");
   const srOnly = (el) => { for (let a = el; a; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.clip && cs.clip !== "auto" || cs.clipPath && cs.clipPath !== "none" || a.classList?.contains("sr") || a.classList?.contains("skip") || a.classList?.contains("hp")) return true; } return false; };
   if (document.documentElement.scrollWidth > vw + 1) out.push(`page scrolls sideways (${document.documentElement.scrollWidth}px wide on a ${vw}px screen)`);
   const all = [...document.body.querySelectorAll("*")].filter((el) => !["SCRIPT", "STYLE", "BR", "OPTION"].includes(el.tagName) && visible(el) && !srOnly(el) && !inClosed(el));
@@ -151,6 +151,8 @@ await a.waitForSelector("#progress:not([hidden])", { timeout: 15000 }); await ch
 await a.waitForSelector(".rep-head", { timeout: 120000 });
 await a.evaluate(() => document.querySelectorAll("details.cat").forEach((d) => (d.open = true)));
 await check(a, "report-free");
+const fillLoss = async (pg) => { await pg.type("#loss input[name=enquiries]", "20"); await pg.type("#loss input[name=perTen]", "3"); await pg.type("#loss input[name=value]", "12500"); await pg.waitForSelector(".loss-big"); await pg.evaluate(() => document.querySelectorAll(".loss-how").forEach((d) => (d.open = true))); };
+await fillLoss(a); await check(a, "report-free-loss");
 const freeId = new URL(a.url()).pathname.split("/").pop();
 await a.click('[data-req="redesign"]'); await a.waitForSelector(".req-form"); await check(a, "offer-form");
 await a.type('.req-form input[name="name"]', "Avery Long-Name"); await a.type('.req-form input[name="email"]', "avery.with.a.long.address@example-home-services.com");
@@ -191,6 +193,7 @@ await o.goto(BASE + "/r/" + freeId); await o.waitForSelector(".rep-head", { time
 await o.reload(); await o.waitForSelector(".rep-head", { timeout: 20000 });
 await o.evaluate(() => document.querySelectorAll("details.cat").forEach((d) => (d.open = true)));
 await check(o, "report-full");
+await fillLoss(o); await check(o, "report-full-loss");
 // new-website guide: every step
 await o.goto(BASE + "/fix/" + freeId); await o.waitForSelector("#aboutForm"); await check(o, "fix-about");
 await o.$eval('#aboutForm input[name=business]', (e) => (e.value = "")); await o.click('#aboutForm button[type=submit]'); await o.waitForSelector("#aboutForm .form-err:not([hidden])"); await check(o, "fix-about-error");

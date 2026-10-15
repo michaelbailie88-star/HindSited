@@ -925,3 +925,57 @@ label.check input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
 .hero-alt { margin-top: 6px !important; }
 .hero-alt a { font-weight: 700; }
 .how-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+
+/* ---------------------------------------------------------------- what is this costing you? */
+.loss { margin-top: 30px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+@media (min-width: 760px) { .loss { padding: 26px 28px; } }
+.loss-head h3 { font: 850 24px/1.15 var(--display); margin: 0 0 6px; }
+.loss-head .sub { margin: 0 0 16px; color: var(--ink-2); }
+.loss-in { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .loss-in { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; } }
+.loss-in label { display: grid; gap: 6px; font-weight: 600; font-size: 14.5px; min-width: 0; }
+.loss-in .opt { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.loss-in input { font: 600 17px/1.3 var(--body); padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; width: 100%; }
+.loss-out { margin-top: 18px; }
+.loss-wait { margin: 0; }
+.loss-big { background: var(--ink); color: #f4f1ea; border-radius: 14px; padding: 16px 18px; }
+.loss-big p { margin: 0; }
+.loss-k { font: 700 12.5px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: #f0a48e; margin-bottom: 8px !important; }
+.loss-big b { font: 850 clamp(30px, 7vw, 40px)/1 var(--display); color: #fff; }
+.loss-yr { color: #c9c5bb; margin-top: 6px !important; }
+.loss-sum { margin: 14px 0 6px; }
+.loss-sh { font: 800 17px/1.3 var(--body); margin: 18px 0 10px; }
+.loss-stages { display: grid; gap: 12px; }
+.loss-stage { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.loss-stage.is-hidden { background: var(--paper); }
+.ls-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.ls-top span { font-weight: 800; color: var(--mark); white-space: nowrap; }
+.ls-bar { height: 8px; background: var(--paper-2); border-radius: 99px; margin: 8px 0; overflow: hidden; }
+.ls-bar i { display: block; height: 100%; background: var(--mark); border-radius: 99px; }
+.ls-note { margin: 0 0 6px; font-size: 14px; color: var(--muted); }
+.ls-items, .ls-shares { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.ls-items li, .ls-shares li { display: flex; justify-content: space-between; gap: 12px; font-size: 14.5px; }
+.ls-items li span, .ls-shares li span { min-width: 0; }
+.ls-items li b, .ls-shares li b { white-space: nowrap; }
+.ls-hid { margin: 0; font-size: 14.5px; }
+.loss-cta { margin: 16px 0 0; font-weight: 600; }
+.loss-how { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.loss-how summary { cursor: pointer; font-weight: 700; min-height: 26px; }
+.loss-how p { font-size: 14.5px; }
+
+/* ---------------------------------------------------------------- before & after */
+.ba { margin: 4px 0 16px; }
+.ba-h { font-weight: 700; margin: 0 0 8px !important; color: var(--ink) !important; }
+.ba-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ba-tab { font: 600 13.5px/1 var(--body); padding: 9px 12px; min-height: 34px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+.ba-tab.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.ba-frame { position: relative; aspect-ratio: 14 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #ddd; touch-action: pan-y; }
+.ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: left top; display: block; }
+.ba-after { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--p)); }
+.ba-lab { position: absolute; top: 8px; font: 700 12px/1 var(--body); background: rgba(20, 22, 27, .82); color: #fff; padding: 6px 8px; border-radius: 6px; pointer-events: none; }
+.ba-l { left: 8px; } .ba-r { right: 8px; background: var(--mark); }
+.ba-line { position: absolute; top: 0; bottom: 0; left: var(--p); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); pointer-events: none; }
+.ba-knob { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.ba-knob::before { content: "‹ ›"; position: absolute; inset: 0; display: grid; place-items: center; font: 800 15px/1 var(--body); color: var(--ink); }
+.ba-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.ba-cap { margin: 8px 0 0 !important; }
