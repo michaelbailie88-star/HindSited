@@ -102,7 +102,7 @@ function showPaywall(d, url, back) {
     ${d.report && d.reason !== "unlock" ? `<p><a href="/r/${esc(d.report)}" class="linkish">See the free report again →</a></p>` : ""}
     ${!me.signedIn ? `<p class="flash">You'll create your account (or sign in) first, so your plan is saved to you.</p>` : ""}
     <div class="plans">${card("solo")}${card("agency")}</div>
-    <p class="muted small">Prices in USD. Monthly plans cancel any time. Lifetime plans can be refunded within 7 days (70% back). <a href="/cancel" target="_blank">Cancellation policy</a></p>
+    <p class="muted small">Prices in CAD. Monthly plans cancel any time. Lifetime plans can be refunded within 7 days (70% back). <a href="/cancel" target="_blank">Cancellation policy</a></p>
     <p class="form-err" id="payErr" role="alert" hidden></p>
     <button type="button" class="linkish" id="pwBack">← Back</button></div>`);
   $("#pwBack").onclick = () => (back ? (nav(back), followReport(back.split("/").pop())) : goHome());
