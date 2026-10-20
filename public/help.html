@@ -163,13 +163,13 @@
       </div></details>
       <details class="hq" id="dm-none"><summary>I don't have a web address, or I can't get mine back</summary><div class="hq-a">
 <p>No problem:</p>
-<ol><li>Your new site can go live straight away on a free temporary address (like <code>yourbusiness.netlify.app</code>), so you can start sharing it.</li><li>Buy a web address <b>in your own name</b> from any registrar (Namecheap, GoDaddy, Cloudflare and others). It costs about $15 to $25 a year. We'll help you pick a good one.</li><li>Then do <a href="#domain-settings">the two settings</a> and your new address opens your site.</li></ol>
+<ol><li>Your new site can go live straight away on a free temporary address, so you can start sharing it.</li><li>Buy a web address <b>in your own name</b> from any registrar (Namecheap, GoDaddy, Cloudflare and others). It costs about $15 to $25 a year. We'll help you pick a good one.</li><li>Then do <a href="#domain-settings">the two settings</a> and your new address opens your site.</li></ol>
       </div></details>
       <details class="hq" id="domain-settings"><summary>The two settings (exact values)</summary><div class="hq-a">
 <p>When your site is ready, Michael emails you the exact values. They look like this:</p>
 <ol class="hsteps"><li><b>Log in</b> to your domain company and open your web address's <b>DNS</b> settings. It's often called <b>DNS</b>, <b>Manage DNS</b>, <b>DNS records</b> or <b>Advanced DNS</b>.</li>
 <li><b>Setting 1: your main address.</b> Make sure there's one record with<br>Type: <code>A</code> · Host/Name: <code>@</code> (or leave it blank) · Value/Points to: <code>75.2.60.5</code><br><span class="muted small">If your provider offers an ALIAS or ANAME type, you can use that instead, with the value <code>apex-loadbalancer.netlify.com</code>.</span></li>
-<li><b>Setting 2: the "www" version.</b> Make sure there's one record with<br>Type: <code>CNAME</code> · Host/Name: <code>www</code> · Value/Points to: <b>your site's address from Michael's email</b> (it ends in <code>.netlify.app</code>)</li>
+<li><b>Setting 2: the "www" version.</b> Make sure there's one record with<br>Type: <code>CNAME</code> · Host/Name: <code>www</code> · Value/Points to: <b>the exact value from Michael's email</b></li>
 <li><b>Remove the old ones.</b> Delete any other <code>A</code>, <code>AAAA</code> or <code>CNAME</code> records on <code>@</code> or <code>www</code> that point to your old site. Leave everything else alone.</li>
 <li><b>Save.</b> It can take a few hours, and up to a day, to switch over. The padlock (https) turns on by itself once it does.</li></ol>
 <p class="hwarn"><b>Don't touch your email settings.</b> Leave any <code>MX</code> or <code>TXT</code> records exactly as they are, so your business email keeps working.</p>

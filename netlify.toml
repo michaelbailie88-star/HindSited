@@ -9,6 +9,13 @@
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium-min", "puppeteer-core"]
 
+# hindsited.com is the only address: send the old Netlify address there
+[[redirects]]
+  from = "https://hindsighted.netlify.app/*"
+  to = "https://hindsited.com/:splat"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/r/*"
   to = "/index.html"
