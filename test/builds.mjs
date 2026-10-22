@@ -1,6 +1,6 @@
 // New-website builds: owner-only screen, never-expiring payment links, 50%
-// deposit, launch (50% + $25 CAD/month hosting, card only), paid emails,
-// late / 14-day pause flags, update-card link, 30-day hosting end, Help page.
+// deposit, launch (final 50%, one payment, no hosting, no subscription), paid
+// emails, Help page.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
@@ -33,15 +33,15 @@ await o.click('#newB button[type=submit]'); await o.waitForSelector("#newB .form
 ok(/email/i.test(await o.$eval("#newB .form-err", (e) => e.textContent)), "a build needs the customer's details");
 await o.type('#newB input[name=name]', "Pat Plumber"); await o.type('#newB input[name=email]', "pat@pats-plumbing.ca");
 await o.type('#newB input[name=business]', "Pat's Plumbing"); await o.type('#newB input[name=site]', "patsplumbing.ca"); await o.type('#newB input[name=price]', "500");
-ok(/Deposit \$250\.00 CAD · Launch \$275\.00 CAD/.test(await o.$eval("#split", (e) => e.textContent)), "price splits live: $250 deposit, $275 launch");
+ok(/Deposit \$250\.00 CAD · Launch \$250\.00 CAD/.test(await o.$eval("#split", (e) => e.textContent)), "price splits live: $250 deposit, $250 launch");
 await o.click('#newB button[type=submit]'); await o.waitForSelector(".bd-card");
 let t = await text(o);
-ok(/Waiting for deposit/.test(t) && /Deposit \$250 CAD/.test(t) && /Launch \$275 CAD/.test(t), "build saved: waiting for deposit, $250 / $275 CAD");
+ok(/Waiting for deposit/.test(t) && /Deposit \$250 CAD/.test(t) && /Launch \$250 CAD/.test(t), "build saved: waiting for deposit, $250 / $250 CAD");
 ok(await o.$eval('[data-send="launch"]', (e) => e.disabled), "launch link is locked until the deposit is paid");
 const id = await o.$eval(".bd-card", (e) => e.id.slice(2));
 await o.click('[data-send="deposit"]'); await o.waitForFunction(() => /Email sent/.test(document.body.innerText));
 const dep = mailTo("pat@pats-plumbing.ca", /50% deposit/);
-ok(!!dep && /\$250 CAD/.test(dep.subject) && /\$25 CAD a month/.test(dep.text) && /1 to 2 weeks/.test(dep.text) && !!linkIn(dep, "deposit"), "deposit email: amount in CAD, hosting disclosed, timing, a pay link");
+ok(!!dep && /\$250 CAD/.test(dep.subject) && /don't host websites/.test(dep.text) && !/\$25 CAD a month|hosting and updates/i.test(dep.text) && /1 to 2 weeks/.test(dep.text) && !!linkIn(dep, "deposit"), "deposit email: amount in CAD, no hosting, timing, a pay link");
 await o.screenshot({ path: out("builds-1.png"), fullPage: true });
 
 // customer: bad links and launch-before-deposit
@@ -70,37 +70,18 @@ await o.$eval('.bd-prev input[name=preview]', (e) => (e.value = "")); await o.ty
 await o.click(".bd-prev button"); await o.waitForFunction(() => /Preview link saved/.test(document.body.innerText));
 await o.click('[data-send="launch"]'); await o.waitForFunction(() => /Email sent/.test(document.body.innerText));
 const lau = mailTo("pat@pats-plumbing.ca", /website is ready/);
-ok(!!lau && /\$275 CAD/.test(lau.subject) && lau.text.includes("https://pats-plumbing.netlify.app") && /14 days/.test(lau.text) && /30 days' notice/.test(lau.text) && /\$150 CAD/.test(lau.text), "launch email: preview, $275 CAD today, $25/month, 14-day pause, 30-day notice, new pages");
+ok(!!lau && /\$250 CAD/.test(lau.subject) && lau.text.includes("https://pats-plumbing.netlify.app") && /no monthly charges/.test(lau.text) && !/\$25 CAD a month|hosting and updates/i.test(lau.text) && /\$150 CAD/.test(lau.text), "launch email: preview, $250 CAD today, no monthly charges, no hosting, new pages");
 await c.goto(linkIn(lau, "launch")); await c.waitForFunction(() => /You're all set/.test(document.body.innerText));
 const ls = Object.values(state.sessions).find((s) => s.metadata.kind === "launch");
-ok(ls.mode === "subscription" && ls.body["payment_method_types[0]"] === "card" && ls.body["line_items[0][price]"] === "price_hosting_m" && ls.body["line_items[1][price_data][unit_amount]"] === "25000", "launch checkout: $25/month hosting + $250 balance, card only (saved for monthly)");
-ok(!!mailTo("thelazycreatorco@gmail.com", /Launch paid, hosting started/), "you're told when the launch is paid");
+ok(ls.mode === "payment" && !ls.body["payment_method_types[0]"] && !ls.body["line_items[0][price]"] && ls.body["line_items[0][price_data][unit_amount]"] === "25000" && !ls.body["line_items[1][price_data][unit_amount]"], "launch checkout: one payment of the $250 balance, no subscription, no saved card");
+ok(!!mailTo("thelazycreatorco@gmail.com", /Final payment received/), "you're told when the launch is paid");
 
 // owner: live, then late, then pause
 await o.reload(); await o.waitForSelector(".bd-card");
-ok(/Live: hosting paid/.test(await text(o)) && !!(await o.$('[data-send="card"]')), "owner sees it live, with an update-card link");
-const sub = state.subs["sub_" + ls.id];
-sub.status = "past_due"; sub.latest_invoice = { status: "open", created: Math.floor(Date.now() / 1000) - 3 * 86400, amount_remaining: 2500 };
-await o.reload(); await o.waitForSelector(".bd-card");
-ok(/Payment failed 3 days ago/.test(await text(o)), "a failed payment shows how many days late");
-sub.latest_invoice.created = Math.floor(Date.now() / 1000) - 15 * 86400;
-await o.reload(); await o.waitForSelector(".bd-alert");
-ok(/15 days unpaid: pause the site/.test(await text(o)) && /Pause the site now/.test(await text(o)), "at 14+ days it says to pause the site");
-await o.screenshot({ path: out("builds-2-pause.png"), fullPage: true });
-await o.click('[data-send="card"]'); await o.waitForFunction(() => /Email sent/.test(document.body.innerText));
-const card = mailTo("pat@pats-plumbing.ca", /Update the card/);
-ok(!!card && /didn't go through/.test(card.text), "update-card email mentions the missed payment");
-await c.goto(linkIn(card, "card")); await c.waitForFunction(() => /Mock billing portal/.test(document.body.innerText));
-ok(true, "update-card link opens the Stripe card page");
-
-// end hosting in 30 days, then keep
-sub.status = "active"; sub.latest_invoice = { status: "paid", created: Math.floor(Date.now() / 1000), amount_remaining: 0 };
-await o.reload(); await o.waitForSelector("[data-cancel]");
-await o.click("[data-cancel]"); await o.waitForSelector("[data-keep]");
-const days = Math.round((sub.cancel_at - Date.now() / 1000) / 86400);
-ok(days === 30 && !!mailTo("pat@pats-plumbing.ca", /hosting is ending/), "end hosting: Stripe stops it in 30 days and the customer is emailed the date");
-await o.click("[data-keep]"); await o.waitForSelector("[data-cancel]");
-ok(sub.cancel_at === null, "keep hosting clears the end date");
+const ownerText = await text(o);
+ok(/Paid in full: send the files/.test(ownerText) && !(await o.$('[data-send="card"]')) && !/hosting/i.test(ownerText.replace(/There's no hosting and no monthly charge[^\n]*/, "")), "owner sees it paid in full, with no hosting or update-card controls");
+await c.goto(BASE + "/pay/" + id + "/card?t=wrong");
+ok(!/billing portal/i.test(await text(c)), "the old update-card link no longer opens a card page");
 
 // not the owner
 const x = await page();
@@ -113,7 +94,8 @@ ok(true, "builds page tells others it's owner only");
 const h = await page(390);
 await h.goto(BASE + "/help#domain-settings"); await h.waitForSelector("#domain-settings[open]");
 t = await text(h);
-ok(/75\.2\.60\.5/.test(t) && /Don't touch your email settings/.test(t), "help deep link opens the two settings, with exact values and the email warning");
+ok(/We don't host websites/.test(t) && !/75\.2\.60\.5|\$25 CAD/.test(t) && /Don't touch your email settings/.test(t), "help deep link opens pointing the address at your own host, with the email warning and no hosting offer");
+ok(!(await h.$("#hosting")) && !/Hosting and updates/.test(await text(h)), "help has no hosting section");
 await h.type("#hq", "refund"); await new Promise((r) => setTimeout(r, 200));
 ok(await h.evaluate(() => !document.querySelector("#pl-refund").hidden && document.querySelector("#scan").hidden), "help search filters to matching answers");
 ok(await h.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "help fits a phone");

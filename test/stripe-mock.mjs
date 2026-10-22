@@ -1,7 +1,7 @@
 // A tiny stand-in for the parts of the Stripe API HindSited uses.
 import http from "node:http";
 export const state = { sessions: {}, subs: {}, customers: 0 };
-const PRICES = { hindsited_solo_month: "price_solo_m", hindsited_solo_once: "price_solo_o", hindsited_agency_month: "price_ag_m", hindsited_agency_once: "price_ag_o", hindsited_extra_business_month: "price_extra_m", tlcc_hosting_month: "price_hosting_m" };
+const PRICES = { hindsited_solo_month: "price_solo_m", hindsited_solo_once: "price_solo_o", hindsited_agency_month: "price_ag_m", hindsited_agency_once: "price_ag_o", hindsited_extra_business_month: "price_extra_m" };
 function parse(body) { const o = {}; for (const [k, v] of new URLSearchParams(body)) o[k] = v; return o; }
 export function startStripeMock(port = 8199) {
   return new Promise((res) => {

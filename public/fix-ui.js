@@ -65,15 +65,15 @@ function draw() {
     body = `<section class="fx-card"><p class="fx-k">Step 2</p><h2>Your web address</h2>
       ${dm && dm.registrar ? `<p class="fx-big">Your web address <b class="one-line">${esc(dm.name)}</b> is registered with <b>${esc(dm.registrar)}</b>.</p>${dm.expires ? `<p class="muted">It renews on ${esc(dateLong(dm.expires))}.</p>` : ""}`
         : `<p class="fx-big">Your web address is registered with a domain company.</p><p class="muted">It's often GoDaddy, Namecheap, Squarespace or Wix. Search your email for "domain renewal" to find yours.</p>`}
-      <p>Your new site keeps this address. When it's ready, you log in to that account and change two settings. Michael sends you the exact values, and you never share a password with anyone.</p>
-      <details class="fx-more"><summary>What are the two settings?</summary><p>Two records in your domain's DNS page: one <code>A</code> record (your main address) and one <code>CNAME</code> record (the www version). It takes about 5 minutes and doesn't touch your email. <a href="/help#domain-settings" target="_blank">See the exact steps ↗</a></p></details>
+      <p>Your new site keeps this address. When you put the site live, you log in to that account and point the address at your host. You never share a password with anyone.</p>
+      <details class="fx-more"><summary>How do I point it at a host?</summary><p>Your host gives you a couple of records to add in your domain's DNS page. It takes about 5 minutes and doesn't touch your email. <a href="/help#domain-settings" target="_blank">See how ↗</a></p></details>
       <details class="fx-more"><summary>Not sure where your web address is registered?</summary><p>Search your email for "domain renewal", check your card statements for a yearly charge from GoDaddy, Namecheap, Squarespace, Wix or similar, or type your address at <a href="https://lookup.icann.org" target="_blank" rel="noopener">lookup.icann.org ↗</a>. <a href="/help#dm-find" target="_blank">More help ↗</a></p></details>
       <h3>Can you log in to your ${dm && dm.registrar ? esc(dm.registrar) : "domain"} account?</h3>
       <div class="fx-choices" role="radiogroup" aria-label="Domain account">
         <button type="button" class="fx-choice" data-d="yes" role="radio" aria-checked="false">Yes, I can log in</button>
         <button type="button" class="fx-choice" data-d="locked" role="radio" aria-checked="false">No, or I'm not sure</button>
         <button type="button" class="fx-choice" data-d="none" role="radio" aria-checked="false">I don't have my own web address</button></div>
-      <p class="muted small">No web address, or can't get yours back? That's fine: your site can go live on a free temporary address, and you can buy one in your own name for about $15 to $25 a year. <a href="/help#dm-none" target="_blank">How that works ↗</a></p>
+      <p class="muted small">No web address, or can't get yours back? That's fine: you can buy one in your own name for about $15 to $25 a year. <a href="/help#dm-none" target="_blank">How that works ↗</a></p>
       <div class="fx-act"><button class="linkish" type="button" id="back">← Back</button></div>${stuckBox("domain")}</section>`;
   } else if (step === "recover") {
     const rh = dm && registrarHelp(dm.registrar), emails = D.emails || [];
@@ -98,8 +98,7 @@ function draw() {
       <div class="fx-terms"><h3>What it costs, before you send</h3>
         <ul><li><b>Your new website: from $500 CAD.</b> Michael emails you an exact quote first. Sending this costs nothing and commits you to nothing.</li>
         <li><b>50% to start, 50% at launch.</b> Both by secure Stripe link. Usually ready 1 to 2 weeks after the deposit.</li>
-        <li><b>Hosting and updates: $25 CAD a month</b>, starting at launch, charged to the card you pay with. It covers hosting, the padlock, small changes and fixes. New pages are $150 CAD each.</li>
-        <li>If a monthly payment is unpaid for 14 days, the site is paused until it's paid. To leave, give 30 days' notice and you get your site's files. Your web address stays in your name.</li></ul>
+        <li><b>No hosting and no monthly charges.</b> You get the complete files to keep and host anywhere. New pages are $150 CAD each.</li></ul>
         <p class="muted small"><a href="/help#new-site" target="_blank">How it all works ↗</a> · <a href="/terms#builds" target="_blank">Terms ↗</a></p></div>
       <p class="muted small">Michael gets your report and these answers by email, and replies to <span class="one-line">${esc(D.email)}</span>.</p>
       <p class="form-err" role="alert" hidden></p>
@@ -107,7 +106,7 @@ function draw() {
   } else {
     body = `<section class="fx-card fx-final"><p class="fx-k">All done</p><h2>Your request is in</h2>
       <p>Here's what happens next:</p>
-      <ol class="fx-steps"><li><b>Your quote by email</b>: what's included, the price and the timing. Nothing happens until you say yes.</li><li><b>Pay the 50% deposit</b> by the secure link in your email. Building starts.</li><li><b>Your new site is built</b> in about 1 to 2 weeks, and you get a preview link. Your current site stays up the whole time.</li><li><b>Pay the final 50% plus your first month of hosting</b> ($25 CAD), by one secure link.</li><li><b>Go live</b>: change <a href="/help#domain-settings" target="_blank">two settings</a> in your domain account and your web address opens the new site.</li></ol>
+      <ol class="fx-steps"><li><b>Your quote by email</b>: what's included, the price and the timing. Nothing happens until you say yes.</li><li><b>Pay the 50% deposit</b> by the secure link in your email. Building starts.</li><li><b>Your new site is built</b> in about 1 to 2 weeks, and you get a preview link. Your current site stays up the whole time.</li><li><b>Pay the final 50%</b> by one secure link. No monthly charges.</li><li><b>Get your files</b> within 1 day and put them on any host you choose (<a href="/help#domain-settings" target="_blank">pointing your web address</a>).</li></ol>
       <p class="muted small">Every step in detail: <a href="/help#new-site" target="_blank">Help: your new website ↗</a></p>
       <a class="btn" href="/r/${esc(id)}">Back to your report</a></section>`;
   }

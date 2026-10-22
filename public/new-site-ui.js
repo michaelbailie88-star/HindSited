@@ -26,7 +26,7 @@ f.onsubmit = async (e) => {
   if (!data.sent) { er.textContent = data.error || "That didn't send. Email thelazycreatorco@gmail.com instead."; er.hidden = false; return; }
   f.closest(".fx-card").outerHTML = `<section class="fx-card fx-final"><p class="fx-k">Sent</p><h2>Your request is in</h2>
     <p>Thanks, ${esc(d.name.trim().split(" ")[0])}. Michael will reply by email. Here's what happens next:</p>
-    <ol class="fx-steps"><li><b>Your quote by email</b>: what's included, the price and the timing. Nothing happens until you say yes.</li><li><b>Pay the 50% deposit</b> by the secure link in your email. Building starts.</li><li><b>Your new site is built</b> in about 1 to 2 weeks, and you get a preview link.</li><li><b>Pay the final 50% plus your first month of hosting</b> ($25 CAD).</li><li><b>Go live</b>: change <a href="/help#domain-settings" target="_blank">two settings</a> in your domain account, or get a new web address.</li></ol>
+    <ol class="fx-steps"><li><b>Your quote by email</b>: what's included, the price and the timing. Nothing happens until you say yes.</li><li><b>Pay the 50% deposit</b> by the secure link in your email. Building starts.</li><li><b>Your new site is built</b> in about 1 to 2 weeks, and you get a preview link.</li><li><b>Pay the final 50%.</b> No monthly charges.</li><li><b>Get your files</b> and put them on any host you choose (<a href="/help#domain-settings" target="_blank">pointing your web address</a>).</li></ol>
     <p class="muted small">Every step in detail: <a href="/help#new-site">Help: your new website</a></p></section>`;
   window.scrollTo({ top: 0 });
 };

@@ -511,10 +511,10 @@ function offersHtml({ all, id, before }) {
       <h4>A brand-new website, built for your business</h4>
       <p>A bug-free rebuild with a fresh, modern look. Every issue in this report is gone for good, not patched. It keeps your web address, and it's yours: you never share a password with anyone.</p>
       ${before ? compareHtml(before) : ""}
-      <ul class="ticks"><li>Designed for phones first, fast to load</li><li>Clear buttons that turn visitors into calls and bookings</li><li>Google-ready: titles, descriptions, sitemap</li><li>Keeps your web address</li><li>Hosting and updates available</li></ul>
+      <ul class="ticks"><li>Designed for phones first, fast to load</li><li>Clear buttons that turn visitors into calls and bookings</li><li>Google-ready: titles, descriptions, sitemap</li><li>Keeps your web address</li><li>You get the complete files to keep</li></ul>
       <p class="offer-price">From <b>$500</b> CAD</p>
       <div class="offer-act">${id ? `<a class="btn" href="/fix/${esc(id)}">Start my new website</a>` : `<button class="btn" type="button" data-req="redesign">Request a new website</button>`}<a class="linkish" href="https://thelazycreatorcompany.com" target="_blank" rel="noopener">See my work</a></div>
-      <p class="muted small offer-fine">50% to start, 50% at launch, then $25 CAD a month for hosting and updates. <a href="/help#new-site" target="_blank">How it works ↗</a></p>
+      <p class="muted small offer-fine">50% to start, 50% when it's ready. No monthly charges, and we don't host websites. <a href="/help#new-site" target="_blank">How it works ↗</a></p>
       <p class="muted small offer-fine">About 5 minutes. No cost to ask, and no work or charge until you agree to a quote.${id ? ` <button class="linkish" type="button" data-req="redesign">Or just send me a message</button>` : ""}</p>
       <div class="req" data-for="redesign" hidden></div>
     </article></div>`;
