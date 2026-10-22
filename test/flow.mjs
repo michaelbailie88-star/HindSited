@@ -128,7 +128,7 @@ await Promise.all([ns.waitForNavigation(), ns.click('.hero-alt a[href="/new-webs
 await ns.waitForSelector("#ns");
 await ns.click('#ns button[type=submit]'); await ns.waitForSelector("#ns .form-err:not([hidden])");
 ok(/name/.test(await ns.$eval("#ns .form-err", (e) => e.textContent)), "new-website form checks the details before sending");
-ok(/\$25 CAD a month/.test(await text(ns)) && /50% to start/.test(await text(ns)), "new-website form shows the costs before sending");
+ok(/No hosting and no monthly charges/.test(await text(ns)) && /50% to start/.test(await text(ns)), "new-website form shows the costs before sending");
 await ns.type('#ns input[name=name]', "Robin Baker"); await ns.type('#ns input[name=email]', "robin@robins-bakery.ca"); await ns.type('#ns input[name=business]', "Robin's Bakery");
 await ns.click('#ns input[name=domain][value=none]'); await ns.click('#ns input[value="Online booking"]');
 await ns.type('#ns textarea[name=note]', "Need it before Christmas.");
