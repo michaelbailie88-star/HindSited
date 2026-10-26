@@ -142,6 +142,7 @@ async function followReport(id, url) {
     if (r.status === 404) { showError("We couldn't find that report. It may have been mistyped."); return; }
     if (r.status !== 200) { if (++misses > 8) { showError("Lost touch with HindSited. Check your connection and try again."); return; } continue; }
     data = r.data;
+    if (data.kind === "compare") { if (data.parent) { history.replaceState({}, "", "/r/" + data.parent); followReport(data.parent); } else showError("We couldn't find that report."); return; }
     if (!url && data.url) $("#progHost").textContent = new URL(data.url).hostname.replace(/^www\./, "");
     if (data.state === "error") { showError(data.error || "Something went wrong checking the site."); return; }
     if (data.state === "done" && data.scan) break;
@@ -153,7 +154,7 @@ async function followReport(id, url) {
   }
   if (!data || data.state !== "done" || !data.scan) { showError("The check took too long. The site may be very slow. Try again in a few minutes."); return; }
   const report = data.locked ? data.report : buildReport(data.scan);
-  await showReport(report, data.scan, { id, mine: data.mine, createdAt: data.createdAt || data.at, brand: data.brand || null, locked: !!data.locked, hidden: data.hidden || null, free: !!data.free, site: data.site });
+  await showReport(report, data.scan, { id, mine: data.mine, createdAt: data.createdAt || data.at, brand: data.brand || null, locked: !!data.locked, hidden: data.hidden || null, free: !!data.free, site: data.site, compare: data.compare || null });
   const q = new URLSearchParams(location.search);
   if (q.get("plans") && data.locked) { history.replaceState({}, "", "/r/" + id); showPaywall({ reason: "unlock", site: data.site }, null, "/r/" + id); }
   else if (q.get("checkout")) {
@@ -382,6 +383,8 @@ async function showReport(report, scan, meta = {}) {
     ? `<div class="rep-sec"><h3>Google speed test</h3><p class="sub">Your speed results include one of the hidden issues.</p><div class="locked-card wide"><div class="lc-blur" aria-hidden="true"><b>Speed ██/100 · Google basics ██/100</b><p>████ ███ ████████ ██████ ███ █████████.</p></div><div class="lc-over"><span class="lock-ic" aria-hidden="true"></span><b>Speed results hidden</b><button class="linkish unlock-btn" type="button">Unlock full report</button></div></div></div>`
     : `<div class="rep-sec"><h3>Google speed test</h3><p class="sub">Scores straight from Google PageSpeed Insights, which runs the same test Google uses.</p><div class="speed-grid">${gauge("On a phone", sp.mobile)}${gauge("On a computer", sp.desktop)}</div></div>`;
 
+  html += rivalSection();
+
   if (report.passed.length) {
     html += `<div class="rep-sec"><h3>What's working</h3><p class="sub">${report.passed.length} checks your site passed.</p><div class="pass-grid">${report.passed.map((p) => `<div class="pass">${esc(p.text)}</div>`).join("")}</div></div>`;
   }
@@ -424,8 +427,84 @@ async function showReport(report, scan, meta = {}) {
   wireOffers(rep, { reportId: meta.id, host, locked, back: reportPath });
   wireLoss(rep, { findings: report.findings, hidden: locked && hid.count ? hid : null, locked, back: reportPath, host, offers: !meta.brand });
   wireCompare(rep);
+  const catTotals = {};
+  for (const f of report.findings) catTotals[f.cat] = (catTotals[f.cat] || 0) + 1;
+  if (locked) for (const [c, n] of Object.entries(hid.byCat || {})) catTotals[c] = (catTotals[c] || 0) + n;
+  const perf = (x) => (x && x.scores && x.scores.performance != null ? x.scores.performance : null);
+  wireRival(rep, { id: meta.id, host, locked, back: reportPath, offers: !meta.brand, compare: meta.compare,
+    you: { score: report.score, grade: report.grade.label, counts: { now: nowN, soon: soonN, worth: worthN }, byCat: catTotals, passed: report.passed.length, speed: sp.locked ? null : { mobile: perf(sp.mobile), desktop: perf(sp.desktop) } } });
   view("report");
   ping("report_view", "report:" + reportPath);
+}
+
+// ---------------------------------------------------------------- you vs a competitor
+function rivalSection() {
+  return `<section class="rep-sec rival" id="rival"><h3>How do you stack up?</h3>
+    <p class="sub">Enter a competitor's website. HindSited checks it the same way and puts the two of you side by side. One comparison per report.</p>
+    <div class="rival-body" aria-live="polite"></div></section>`;
+}
+function wireRival(root, ctx) {
+  const box = root.querySelector("#rival .rival-body"); if (!box) return;
+  if (!ctx.id) { box.closest("#rival").remove(); return; }
+  let live = true;
+  const form = (err) => {
+    box.innerHTML = `<form class="rival-form no-print" novalidate><label for="rivalUrl">Competitor's website</label>
+      <div class="rival-row"><input id="rivalUrl" name="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="theircompany.com"><button class="btn" type="submit">Compare</button></div>
+      <p class="form-err" role="alert"${err ? "" : " hidden"}>${esc(err || "")}</p></form>`;
+    const f = box.querySelector("form"), er = f.querySelector(".form-err");
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const v = cleanInput(f.url.value);
+      if (!v) { er.textContent = "Enter their website address, like theircompany.com."; er.hidden = false; f.url.focus(); return; }
+      const btn = f.querySelector("button"); btn.disabled = true;
+      const { data } = await api("/compare", { method: "POST", body: JSON.stringify({ report: ctx.id, url: v }) });
+      btn.disabled = false;
+      if (data.id) { follow(data.id, data.site || new URL(v).hostname.replace(/^www\./, "")); return; }
+      er.textContent = data.error || "That didn't start. Try again in a minute."; er.hidden = false;
+    };
+  };
+  const follow = async (cid, site) => {
+    const started = Date.now();
+    box.innerHTML = `<div class="rival-wait"><span class="spin" aria-hidden="true"></span><p><b>Checking ${esc(site)}…</b><br><span class="muted small">This takes 1 to 3 minutes. Keep reading your report: the comparison appears here when it's ready.</span></p></div>`;
+    while (live && document.body.contains(box)) {
+      const { status, data } = await api("/report?id=" + encodeURIComponent(cid));
+      if (status === 200 && data.state === "done") { draw(data); return; }
+      if (status === 200 && data.state === "error") { form(`We couldn't check ${site}: ${data.error || "the site didn't load."} Try another address.`); return; }
+      if (status === 404 || Date.now() - started > 8 * 60000) { form("That comparison didn't finish. Try again."); return; }
+      await sleep(3000);
+    }
+  };
+  const draw = (t) => {
+    const y = ctx.you, them = t.site;
+    const rows = [
+      ["Score", y.score, t.score, "high", (v) => `<b>${v}</b>/100`],
+      ["Fix now", y.counts.now, t.counts.now, "low"],
+      ["Fix soon", y.counts.soon, t.counts.soon, "low"],
+      ["Worth fixing", y.counts.worth, t.counts.worth, "low"],
+      ["Checks passed", y.passed, t.passed, "high"],
+      ...(y.speed && y.speed.mobile != null && t.speed.mobile != null ? [["Speed on a phone", y.speed.mobile, t.speed.mobile, "high", (v) => v + "/100"]] : []),
+    ];
+    const cats = Object.entries(CATEGORIES).map(([k, label]) => [label, y.byCat[k] || 0, t.byCat[k] || 0, "low", (v) => (v ? String(v) : "None")]);
+    const cell = (v, other, better, fmt) => { const win = better === "high" ? v > other : v < other; return `<td class="${win ? "win" : ""}">${fmt ? fmt(v) : v}${win ? '<span class="sr-only"> (better)</span>' : ""}</td>`; };
+    const row = ([l, a, b, better, fmt]) => `<tr><th scope="row">${esc(l)}</th>${cell(a, b, better, fmt)}${cell(b, a, better, fmt)}</tr>`;
+    const gap = y.score - t.score;
+    const head = gap > 0 ? `You're ahead of ${esc(them)} by ${gap} point${gap === 1 ? "" : "s"}.` : gap < 0 ? `${esc(them)} is ahead of you by ${-gap} point${gap === -1 ? "" : "s"}.` : `You and ${esc(them)} are tied.`;
+    const note = gap < 0 ? "Customers comparing the two of you are likely to notice. Fixing your “fix now” issues is the quickest way to pass them." : gap > 0 ? "Keep it that way: fix what's left and you widen the gap." : "Fixing your “fix now” issues is the quickest way to pull ahead.";
+    box.innerHTML = `<p class="rival-verdict ${gap >= 0 ? "ahead" : "behind"}">${head}</p><p class="muted">${note}</p>
+      <div class="rival-scroll"><table class="rival-table"><thead><tr><th scope="col"><span class="sr-only">Check</span></th><th scope="col">You<span class="one-line">${esc(ctx.host)}</span></th><th scope="col">Them<span class="one-line">${esc(them)}</span></th></tr></thead>
+      <tbody>${rows.map(row).join("")}<tr class="rival-sub"><th scope="colgroup" colspan="3">Issues by type</th></tr>${cats.map(row).join("")}</tbody></table></div>
+      ${t.top && t.top.length ? `<h4 class="rival-h">Their biggest problems</h4><ul class="rival-top">${t.top.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      <div class="rival-act no-print">${ctx.locked ? `<button class="btn unlock-btn" type="button">See how to fix all of yours</button>` : ctx.offers ? `<a class="btn" href="#offers">Get a site that beats theirs</a>` : ""}
+      <button class="tool" type="button" id="rivalShare">Copy this comparison</button><span class="tool-note" role="status"></span></div>`;
+    const ub = box.querySelector(".unlock-btn");
+    if (ub) ub.onclick = () => { ping("unlock_click", "unlock:" + ctx.back); showPaywall({ reason: "unlock", site: ctx.host }, null, ctx.back); };
+    box.querySelector("#rivalShare").onclick = async (e) => {
+      const txt = `${ctx.host}: ${y.score}/100 vs ${them}: ${t.score}/100 on HindSited. ${location.origin}${ctx.back}`;
+      const n = e.target.nextElementSibling;
+      try { await navigator.clipboard.writeText(txt); n.textContent = "Copied."; } catch { n.textContent = txt; }
+    };
+  };
+  if (ctx.compare && ctx.compare.id) follow(ctx.compare.id, ctx.compare.site); else form();
 }
 
 // ---------------------------------------------------------------- before & after (their site vs a real build)

@@ -17,7 +17,7 @@ export const FUNNEL = [
   ["build_click", "Clicked “Start my new website”", "report_view"],
   ["lead_sent", "Sent a website request"]
 ];
-export const OTHER = [["scan_error", "Scan failed"], ["unlock_click", "Clicked “Unlock full report”"], ["share_click", "Shared a score"]];
+export const OTHER = [["scan_error", "Scan failed"], ["unlock_click", "Clicked “Unlock full report”"], ["compare_start", "Compared with a competitor"], ["share_click", "Shared a score"]];
 export const EVENTS = new Set([...FUNNEL, ...OTHER].map((x) => x[0]));
 // the only events a browser may send (the rest are recorded by the server itself)
 export const CLIENT_EVENTS = new Set(["home_view", "report_view", "plans_view", "unlock_click", "build_click", "share_click"]);

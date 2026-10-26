@@ -17,8 +17,8 @@ export default async (req) => {
   const store = reports();
   const base = await store.get(id, { type: "json" });
   if (!base || base.state !== "queued") return;
-  const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, tier: base.tier || (base.free ? "free" : "paid"), day: base.day || null, brand: base.brand || null, createdAt: base.createdAt };
-  const note = (ev) => (isOwner(keep.owner) ? null : track(ev, { tag: keep.free ? "free" : "paid" }));
+  const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, tier: base.tier || (base.free ? "free" : "paid"), day: base.day || null, brand: base.brand || null, createdAt: base.createdAt, ...(base.kind ? { kind: base.kind, parent: base.parent } : {}) };
+  const note = (ev) => (isOwner(keep.owner) || keep.kind === "compare" ? null : track(ev, { tag: keep.free ? "free" : "paid" }));
   let chain = Promise.resolve();
   // saves run strictly in order so a late progress update never overwrites the result
   const save = (data) => (chain = chain.then(() => store.setJSON(id, { ...keep, ...data, at: new Date().toISOString() })).catch(() => {}));

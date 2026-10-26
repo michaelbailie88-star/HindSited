@@ -17,6 +17,7 @@ export default async (req) => {
   if (!id) return json({ error: "Missing report id." }, 400);
   const r = await reports().get(id, { type: "json" });
   if (!r) return json({ state: "missing" }, 404);
+  if (r.kind === "compare") return json(compareSummary(r));
   const me = await sessionEmail(req);
   const { owner, day, scan, ...pub } = r;
   const mine = !!me && me === owner;
@@ -63,5 +64,16 @@ export default async (req) => {
     hidden: { count: n, total: rep.findings.length, bySeverity, byCat }
   });
 };
+
+// a competitor check: never the findings themselves, only how it scored
+function compareSummary(r) {
+  const base = { kind: "compare", parent: r.parent, state: r.state, site: r.site, error: r.error || null, stages: r.stages || [] };
+  if (r.state !== "done" || !r.scan) return base;
+  const rep = buildReport(r.scan);
+  const counts = { now: 0, soon: 0, worth: 0 }, byCat = {};
+  for (const f of rep.findings) { counts[f.severity === "Fix now" ? "now" : f.severity === "Fix soon" ? "soon" : "worth"]++; byCat[f.cat] = (byCat[f.cat] || 0) + 1; }
+  const sp = r.scan.speed || {}, perf = (x) => (x && x.scores && x.scores.performance != null ? x.scores.performance : null);
+  return { ...base, score: rep.score, grade: rep.grade.label, total: rep.findings.length, counts, byCat, passed: rep.passed.length, speed: { mobile: perf(sp.mobile), desktop: perf(sp.desktop) }, top: rep.findings.slice(0, 3).map((f) => f.title) };
+}
 
 export const config = { path: "/api/report", method: "GET" };

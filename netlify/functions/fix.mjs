@@ -31,7 +31,7 @@ export default async (req) => {
   const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
   const id = String((req.method === "POST" ? body.report : url.searchParams.get("report")) || "").replace(/[^a-f0-9-]/gi, "").slice(0, 40);
   const r = id && (await reports().get(id, { type: "json" }));
-  if (!r || r.state !== "done" || !r.scan) return json({ error: "We couldn't find that report." }, 404);
+  if (!r || r.kind === "compare" || r.state !== "done" || !r.scan) return json({ error: "We couldn't find that report." }, 404);
   if (r.owner && r.owner !== me) return json({ error: "That report belongs to another account." }, 403);
   u.fixes = u.fixes || {};
   const prog = u.fixes[id] || { step: "about", status: "started", at: new Date().toISOString() };

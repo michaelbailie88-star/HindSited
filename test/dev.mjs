@@ -10,7 +10,7 @@ process.env.HS_LOCAL_MAIL = "1";
 globalThis.Netlify = { env: { get: (k) => process.env[k] } };
 const load = async (f) => (await import("../netlify/functions/" + f + ".mjs"));
 const mods = {};
-for (const f of ["auth", "account", "request", "reviews", "fix", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message", "calc", "calc-lead", "calc-leads", "builds", "pay", "pay-done", "event"]) mods[f] = await load(f);
+for (const f of ["auth", "account", "request", "reviews", "fix", "me", "scan", "report", "check-bg", "checkout", "checkout-done", "billing", "brand", "kit", "kit-message", "calc", "calc-lead", "calc-leads", "builds", "pay", "pay-done", "event", "compare"]) mods[f] = await load(f);
 const routes = {};
 for (const m of Object.values(mods)) { const p = m.config.path; (Array.isArray(p) ? p : [p]).forEach((x) => (routes[x] = m)); }
 export const { outbox } = await import("../netlify/lib/mail.mjs");
