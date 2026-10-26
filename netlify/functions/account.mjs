@@ -4,6 +4,7 @@ import { json } from "../lib/guard.mjs";
 import { sessionEmail, sessionFor, clearSession } from "../lib/session.mjs";
 import { getUser, saveUser, deleteUser, reports, calcs, leads, reviewsStore, fingerprint, cards } from "../lib/store.mjs";
 import { kits } from "../lib/kits.mjs";
+import { cardKey } from "../lib/card.mjs";
 import { stripe } from "../lib/stripe.mjs";
 import { hashPassword, checkPassword, passwordProblem, clean, cleanSite } from "../lib/password.mjs";
 
@@ -45,7 +46,7 @@ export default async (req) => {
       try { await stripe("DELETE", "/subscriptions/" + s.id); }
       catch (e) { if (!/404|No such subscription/.test(e.message)) return json({ error: "We couldn't cancel your subscription with our payment provider, so nothing was deleted. Try again in a minute, or email thelazycreatorco@gmail.com." }, 502); }
     }
-    for (const r of u.reports || []) { await reports().delete(r.id).catch(() => {}); await cards().delete(r.id).catch(() => {}); }
+    for (const r of u.reports || []) { await reports().delete(r.id).catch(() => {}); await cards().delete(cardKey(r.id)).catch(() => {}); await cards().delete(r.id).catch(() => {}); }
     for (const s of u.kits || []) await kits().delete(s).catch(() => {});
     for (const s of u.calcs || []) {
       await calcs().delete(s).catch(() => {});

@@ -2,12 +2,12 @@
 // (reports made before share cards existed). Started only by /api/card.
 import { launchBrowser } from "../lib/browser.mjs";
 import { reports, cards, appSecret } from "../lib/store.mjs";
-import { makeCard, cardable } from "../lib/card.mjs";
+import { makeCard, cardable, cardKey } from "../lib/card.mjs";
 
 export default async (req) => {
   if (req.headers.get("x-hs-key") !== (await appSecret())) return;
   const id = (new URL(req.url).searchParams.get("id") || "").replace(/[^a-f0-9-]/gi, "").slice(0, 40);
-  if (!id || (await cards().get(id))) return;
+  if (!id || (await cards().get(cardKey(id)))) return;
   const r = await reports().get(id, { type: "json" });
   if (!cardable(r)) return;
   let browser;

@@ -10,6 +10,7 @@ import { freshIp } from "./helpers.mjs";
 process.env.HS_ALLOW_LOCAL = "1";
 const { startDev } = await import("./dev.mjs");
 const store = await import("../netlify/lib/store.mjs");
+const { cardKey } = await import("../netlify/lib/card.mjs");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const out = (n) => path.join(here, "out", n);
 const fxA = await serve(path.join(here, "fixtures", "bad"), 8101);
@@ -29,12 +30,24 @@ await p.type("#url", "127.0.0.1:8101"); await p.click("#go");
 await p.waitForSelector(".rep-head", { timeout: 120000 });
 const rid = new URL(p.url()).pathname.split("/").pop();
 const score = Number(await p.$eval(".dial b", (e) => e.textContent));
-ok(await waitFor(async () => !!(await store.cards().get(rid))), "the score card is drawn when the scan finishes");
+ok(await waitFor(async () => !!(await store.cards().get(cardKey(rid)))), "the score card is drawn when the scan finishes");
 let r = await fetch(BASE + "/api/card?id=" + rid);
 const png = Buffer.from(await r.arrayBuffer());
 fs.writeFileSync(out("share-card.png"), png);
 const sz = pngSize(png);
 ok(r.status === 200 && r.headers.get("content-type") === "image/png" && sz.sig === "PNG" && sz.w === 1200 && sz.h === 630, "card is a 1200x630 PNG");
+
+// long website names shrink onto one line instead of breaking mid-word
+{ const { cardHtml, fitHost } = await import("../netlify/lib/card.mjs");
+  const cp = await page(1200); await cp.setViewport({ width: 1200, height: 630 });
+  for (const host of ["thelazycreatorcompany.com", "smithandsonsplumbingandheating.ca"]) {
+    await cp.setContent(cardHtml({ host, score: 76, grade: "A few blind spots", now: 2, soon: 0, passed: 40 }));
+    const size = await cp.evaluate(fitHost);
+    const lines = await cp.$eval(".host", (h) => Math.round(h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight)));
+    const panel = await cp.$eval(".l", (e) => e.getBoundingClientRect().width);
+    ok(lines === 1 && size >= 30 && panel === 470, `card: “${host}” fits on one line (${size}px), score panel keeps its width`);
+  }
+  await cp.screenshot({ path: out("share-card-long.png") }); }
 
 // the share panel
 await p.click("#shareCard"); await p.waitForSelector("#shareBox .share-img");
@@ -54,16 +67,16 @@ ok(new URL(v.url()).pathname === "/r/" + rid, "opening the share link lands on t
 ok((await fetch(BASE + "/s/not-a-report", { redirect: "manual" })).status === 302, "a bad share link goes to the home page");
 
 // an older report with no card: drawn on demand
-await store.cards().delete(rid);
+await store.cards().delete(cardKey(rid));
 const q = await page();
 await q.goto(BASE + "/r/" + rid); await q.waitForSelector("#shareCard");
 await q.click("#shareCard"); await q.waitForSelector("#shareBox .share-img, #shareBox .share-row", { timeout: 90000 });
-ok(!!(await q.$("#shareBox .share-img")) && !!(await store.cards().get(rid)), "an older report's card is drawn when someone taps Share");
+ok(!!(await q.$("#shareBox .share-img")) && !!(await store.cards().get(cardKey(rid))), "an older report's card is drawn when someone taps Share");
 
 // competitor checks get no card or share page
 const cmp = await fetch(BASE + "/api/compare", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ report: rid, url: "127.0.0.2:8102" }) }).then((x) => x.json());
 await waitFor(async () => (await store.reports().get(cmp.id, { type: "json" }))?.state === "done", 150000);
-ok((await fetch(BASE + "/api/card?id=" + cmp.id + "&make=1")).status === 404 && !(await store.cards().get(cmp.id)), "no card for a competitor check");
+ok((await fetch(BASE + "/api/card?id=" + cmp.id + "&make=1")).status === 404 && !(await store.cards().get(cardKey(cmp.id))), "no card for a competitor check");
 ok((await fetch(BASE + "/s/" + cmp.id, { redirect: "manual" })).status === 302, "no share page for a competitor check");
 
 // phone

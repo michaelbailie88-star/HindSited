@@ -5,6 +5,9 @@ import { buildReport } from "../../public/rules.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// bump to redraw every card after a design change (old ones are simply ignored)
+export const cardKey = (id) => "v2/" + id;
+
 // only a plain HindSited report gets a card (not competitor checks or agency-branded reports)
 export const cardable = (r) => !!r && r.state === "done" && !!r.scan && !r.kind && !r.brand;
 
@@ -26,15 +29,15 @@ export function cardHtml(i) {
 *{box-sizing:border-box;margin:0}
 html,body{width:1200px;height:630px;overflow:hidden;background:#f4f1ea;color:#14161b;font-family:"Public Sans",Arial,sans-serif}
 .c{display:flex;height:630px}
-.l{width:470px;background:#14161b;display:flex;align-items:center;justify-content:center;position:relative}
+.l{width:470px;flex:none;background:#14161b;display:flex;align-items:center;justify-content:center;position:relative}
 .dial{position:relative;width:300px;height:300px}
 .dial svg{transform:rotate(-90deg)}
 .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
 .num b{font:900 118px/1 "Archivo",Arial,sans-serif;font-stretch:110%;letter-spacing:-.02em}
 .num small{font-size:22px;color:#b9b6ae;margin-top:6px}
-.r{flex:1;padding:58px 64px 50px;display:flex;flex-direction:column}
+.r{flex:1;min-width:0;padding:58px 64px 50px;display:flex;flex-direction:column}
 .k{font:700 20px/1 "Public Sans",Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#e5461d}
-.host{font:850 ${hostSize}px/1.05 "Archivo",Arial,sans-serif;font-stretch:106%;letter-spacing:-.015em;margin-top:26px;word-break:break-all}
+.host{font:850 ${hostSize}px/1.05 "Archivo",Arial,sans-serif;font-stretch:106%;letter-spacing:-.015em;margin-top:26px;white-space:nowrap}
 .grade{font:700 30px/1.2 "Public Sans",Arial,sans-serif;color:#3a3e47;margin-top:16px}
 .chips{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
 .chip{font:700 22px/1 "Public Sans",Arial,sans-serif;padding:13px 18px;border-radius:99px;background:#e6e8ec;color:#4a5363}
@@ -52,6 +55,15 @@ html,body{width:1200px;height:630px;overflow:hidden;background:#f4f1ea;color:#14
 </div></body></html>`;
 }
 
+// runs in the card page: the website name stays on one line, shrinking to fit;
+// only a name too long even at 30px wraps
+export function fitHost() {
+  const h = document.querySelector(".host"); let s = parseFloat(getComputedStyle(h).fontSize);
+  while (h.scrollWidth > h.clientWidth && s > 30) { s -= 2; h.style.fontSize = s + "px"; }
+  if (h.scrollWidth > h.clientWidth) { h.style.whiteSpace = "normal"; h.style.overflowWrap = "anywhere"; }
+  return s;
+}
+
 // draws and saves the card; never throws
 export async function makeCard(browser, id, r) {
   if (!cardable(r)) return false;
@@ -61,8 +73,9 @@ export async function makeCard(browser, id, r) {
     await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
     await page.setContent(cardHtml(cardInfo(r)), { waitUntil: "networkidle0", timeout: 8000 }).catch(() => {});
     await page.evaluate(() => document.fonts && document.fonts.ready).catch(() => {});
+    await page.evaluate(fitHost).catch(() => {});
     const png = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: 1200, height: 630 } });
-    await cards().set(id, Buffer.from(png));
+    await cards().set(cardKey(id), Buffer.from(png));
     return true;
   } catch (e) { console.error("card failed", String(e && e.message).slice(0, 200)); return false; }
   finally { if (page) await page.close().catch(() => {}); }
