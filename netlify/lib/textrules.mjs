@@ -28,6 +28,8 @@ export function makeTextRules() {
     code_error: /Liquid (?:syntax )?error|Translation missing:|Fatal error:|Parse error:|Warning: [a-z_]+\(|Notice: Undefined|Uncaught (?:Type|Reference|Syntax)Error|\{\{\s*[\w.]+\s*\}\}|\{%-?\s*\w+|\[object Object\]|\bNaN\b|\$\{[\w.]+\}|(?:\$|price:?)\s*undefined\b/,
     zero_price: /(?:^|[^\d.,])\$\s?0(?:\.00)?(?![\d.,%])/,
     zero_price_exclude: /^\s*(?:down|deposit|interest|fee|fees|delivery|shipping|apr|financ|due today|setup|to start|enrol|enroll|membership fee)/i,
+    // Text that only talks ABOUT a $0 price (e.g. a checklist saying "Something priced at $0"), not a real price.
+    zero_price_mention: /\b(?:something|anything|an? (?:item|product|service))\s+(?:is\s+)?(?:priced|listed|selling|showing)\s+(?:at|for)\s+\$\s?0(?:\.00)?\b/i,
     copyright: /(?:©|\(c\)|copyright)[^\d\n]{0,25}((?:19|20)\d{2})(?:\s*[-–—]\s*((?:19|20)\d{2}))?/gi,
     markup_leftover: /#{3,}|\*\*[^*\n]{2,40}\*\*|\[\/[\w\-/]+\]|&(?:nbsp|amp|quot|lt|gt|#\d{2,5});/,
     phone: /(?:\+?1[\s.-]?)?\(?\b[2-9]\d{2}\)?[\s.-]\d{3}[\s.-]\d{4}\b/,
@@ -99,6 +101,23 @@ export function makeTextRules() {
     return null;
   }
 
+  // True when the match is wrapped in quote marks, i.e. the page mentions the words rather than using them.
+  function quoted(text, h) {
+    const before = text.slice(Math.max(0, h.index - 2), h.index), after = text.slice(h.index + h.length, h.index + h.length + 2);
+    return /["\u201c\u2018'\u00ab]\s*$/.test(before) && /^\s*["\u201d\u2019'\u00bb]/.test(after);
+  }
+
+  function firstUnquoted(re, text) {
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    let m;
+    while ((m = g.exec(text))) {
+      const h = { index: m.index, length: m[0].length };
+      if (!quoted(text, h)) return h;
+      if (!m[0].length) g.lastIndex++;
+    }
+    return null;
+  }
+
   function first(re, text) {
     const m = re.exec(text);
     return m ? { index: m.index, length: m[0].length } : null;
@@ -109,7 +128,7 @@ export function makeTextRules() {
     const hits = [];
     if (!text || text.length < 2) return hits;
     let h;
-    if ((h = first(R.lorem, text))) hits.push({ rule: "lorem", ...h });
+    if ((h = firstUnquoted(R.lorem, text))) hits.push({ rule: "lorem", ...h });
     if ((h = first(R.template_text, text))) hits.push({ rule: "template_text", ...h });
     else if (TEMPLATE_ALONE.test(text)) hits.push({ rule: "template_text", index: text.search(/\S/), length: text.trim().length });
     if ((h = first(R.placeholder_phone, text)) || (h = first(R.placeholder_email, text))) hits.push({ rule: "placeholder_contact", ...h });
@@ -126,6 +145,7 @@ export function makeTextRules() {
     if (!m) return null;
     const after = text.slice(m.index + m[0].length, m.index + m[0].length + 30);
     if (R.zero_price_exclude.test(after)) return null;
+    if (R.zero_price_mention.test(text)) return null;
     if (!contextIsPrice && !/price/i.test(text)) return null;
     const lead = m[0].match(/^[^$]*/)[0].length;
     return { index: m.index + lead, length: m[0].length - lead };
