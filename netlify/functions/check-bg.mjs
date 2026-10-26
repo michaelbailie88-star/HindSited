@@ -8,6 +8,7 @@ import { buildReport } from "../../public/rules.js";
 import { refund } from "../lib/refund.mjs";
 import { domainInfo } from "../lib/domain.mjs";
 import { track, isOwner } from "../lib/events.mjs";
+import { makeCard } from "../lib/card.mjs";
 
 export default async (req) => {
   if (req.headers.get("x-hs-key") !== (await appSecret())) return;
@@ -47,6 +48,7 @@ export default async (req) => {
     await chain;
     await note("scan_done");
     if (keep.owner) await noteScore(keep.owner, id, r).catch(() => {});
+    await makeCard(browser, id, { ...keep, state: "done", scan: out.scan });
   } catch (e) {
     const m = String((e && e.code) || "") + " " + String((e && e.message) || e);
     const friendly = /blocked-host/.test(m) ? "That address isn't a public website."

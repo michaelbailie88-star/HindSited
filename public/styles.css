@@ -1035,3 +1035,14 @@ label.check input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
   .rival-table th, .rival-table td { padding: 9px 4px; }
   .rival-table thead th:first-child { width: 52%; }
 }
+
+/* share your score (report) */
+.tool.tool-main { background: var(--ink); color: #fff; }
+.share-box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin: 12px 0 28px; box-shadow: var(--shadow); max-width: 640px; }
+.share-img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
+.share-l { display: block; font-weight: 700; margin: 14px 0 6px; }
+.share-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.share-row input { flex: 1 1 220px; min-width: 0; font: 500 15px/1.3 var(--body); padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+.share-to { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.share-to a.tool { display: inline-flex; align-items: center; }
+.share-box .muted.small { margin: 12px 0 0; }

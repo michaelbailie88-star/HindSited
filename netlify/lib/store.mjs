@@ -8,8 +8,8 @@ const mem = new Map();
 function memStore(name) {
   const m = mem.get(name) || new Map(); mem.set(name, m);
   return {
-    async get(k, o = {}) { if (!m.has(k)) return null; const v = m.get(k); return o.type === "json" ? JSON.parse(v) : v; },
-    async set(k, v, o = {}) { if (o.onlyIfNew && m.has(k)) return { modified: false }; m.set(k, String(v)); return { modified: true }; },
+    async get(k, o = {}) { if (!m.has(k)) return null; const v = m.get(k); if (Buffer.isBuffer(v)) return o.type === "arrayBuffer" ? v.buffer.slice(v.byteOffset, v.byteOffset + v.length) : v.toString(); return o.type === "json" ? JSON.parse(v) : v; },
+    async set(k, v, o = {}) { if (o.onlyIfNew && m.has(k)) return { modified: false }; m.set(k, ArrayBuffer.isView(v) || v instanceof ArrayBuffer ? Buffer.from(v) : String(v)); return { modified: true }; },
     async setJSON(k, v, o = {}) { return this.set(k, JSON.stringify(v), o); },
     async delete(k) { m.delete(k); },
     async list(o = {}) { return { blobs: [...m.keys()].filter((k) => !o.prefix || k.startsWith(o.prefix)).map((key) => ({ key })) }; }
@@ -53,6 +53,7 @@ export const OWNER_EMAILS = ["thelazycreatorco@gmail.com", "michaelbailie88@iclo
 export const reviewsStore = () => S("site-reviews");
 export const counters = () => S("counters");
 export const events = () => S("events");
+export const cards = () => S("share-cards");
 // One-way fingerprint for abuse records (free-scan / free-kit claims, daily
 // limits): lets us recognise a repeat without keeping the email or IP itself.
 export async function fingerprint(value) {

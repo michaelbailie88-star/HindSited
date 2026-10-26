@@ -327,7 +327,8 @@ async function showReport(report, scan, meta = {}) {
   const reportPath = meta.id ? "/r/" + meta.id : location.pathname;
 
   let html = `<div class="wrap">
-  <div class="rep-tools no-print"><button type="button" class="tool" id="copyLink">Copy share link</button>${locked ? "" : `<button type="button" class="tool" id="savePdf">Download PDF</button>`}<span class="tool-note" id="toolNote" role="status"></span></div>
+  <div class="rep-tools no-print">${meta.id && !meta.brand ? `<button type="button" class="tool tool-main" id="shareCard" aria-expanded="false" aria-controls="shareBox">Share your score</button>` : ""}<button type="button" class="tool" id="copyLink">Copy share link</button>${locked ? "" : `<button type="button" class="tool" id="savePdf">Download PDF</button>`}<span class="tool-note" id="toolNote" role="status"></span></div>
+  ${meta.id && !meta.brand ? `<div class="share-box no-print" id="shareBox" hidden></div>` : ""}
   <div class="rep-head">
     <div class="dial" role="img" aria-label="Score ${report.score} out of 100">
       <svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke="#e1dccf" stroke-width="12"/><circle cx="80" cy="80" r="70" fill="none" stroke="${dialColor}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - report.score / 100)}"/></svg>
@@ -421,6 +422,7 @@ async function showReport(report, scan, meta = {}) {
     try { await navigator.clipboard.writeText(link); $("#toolNote").textContent = "Link copied. Anyone with it can view this report."; }
     catch { $("#toolNote").textContent = link; }
   };
+  if ($("#shareCard")) wireShare({ id: meta.id, host, score: report.score });
   if ($("#savePdf")) $("#savePdf").onclick = () => { document.title = "HindSited report - " + host; window.print(); };
   window.onbeforeprint = () => document.querySelectorAll("details.cat").forEach((d) => d.setAttribute("open", ""));
   rep.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => { ping("unlock_click", "unlock:" + reportPath); showPaywall({ reason: "unlock", site: meta.site || host }, null, reportPath); }));
@@ -435,6 +437,46 @@ async function showReport(report, scan, meta = {}) {
     you: { score: report.score, grade: report.grade.label, counts: { now: nowN, soon: soonN, worth: worthN }, byCat: catTotals, passed: report.passed.length, speed: sp.locked ? null : { mobile: perf(sp.mobile), desktop: perf(sp.desktop) } } });
   view("report");
   ping("report_view", "report:" + reportPath);
+}
+
+// ---------------------------------------------------------------- share your score (card image + link with a preview)
+function wireShare({ id, host, score }) {
+  const btn = $("#shareCard"), box = $("#shareBox");
+  const link = location.origin + "/s/" + id, img = API + "/card?id=" + encodeURIComponent(id);
+  const text = `My website scored ${score}/100 on HindSited. What does yours score?`;
+  let shown = false;
+  const draw = (ready) => {
+    const u = encodeURIComponent(link), t = encodeURIComponent(text);
+    box.innerHTML = `${ready ? `<img class="share-img" src="${esc(img)}" width="1200" height="630" alt="Score card: ${esc(host)} scored ${score} out of 100 on HindSited">` : `<p class="muted">Your score card is still being made. The link works now, and its preview picture appears once the card is ready.</p>`}
+      <label class="share-l" for="shareUrl">Your share link</label>
+      <div class="share-row"><input id="shareUrl" readonly value="${esc(link)}"><button type="button" class="btn small-btn" id="shareCopy">Copy link</button></div>
+      <div class="share-to">${navigator.share ? `<button type="button" class="tool" id="shareNative">Share…</button>` : ""}
+        <a class="tool" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${u}">Facebook</a>
+        <a class="tool" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=${u}">LinkedIn</a>
+        <a class="tool" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${t}&amp;url=${u}">X</a>
+        ${ready ? `<a class="tool" href="${esc(img)}" download="hindsited-${esc(host)}.png">Save the image</a>` : ""}</div>
+      <p class="muted small" id="shareNote" role="status">Anyone with the link sees your report. It shows your score, not your contact details.</p>`;
+    $("#shareCopy").onclick = async () => { const n = $("#shareNote"); try { await navigator.clipboard.writeText(link); n.textContent = "Link copied."; } catch { $("#shareUrl").select(); n.textContent = "Select the link above and copy it."; } };
+    if ($("#shareNative")) $("#shareNative").onclick = () => navigator.share({ title: `${host}: ${score}/100 on HindSited`, text, url: link }).catch(() => {});
+  };
+  btn.onclick = async () => {
+    const open = box.hidden;
+    box.hidden = !open; btn.setAttribute("aria-expanded", String(open));
+    if (!open || shown) return;
+    shown = true;
+    ping("share_click", "share:" + id);
+    box.innerHTML = `<div class="rival-wait"><span class="spin" aria-hidden="true"></span><p>Making your score card…</p></div>`;
+    const started = Date.now();
+    let first = true;
+    while (Date.now() - started < 90000) {
+      const r = await fetch(img + (first ? "&make=1" : ""), { cache: "no-store" }).catch(() => null);
+      first = false;
+      if (r && r.ok && /image/.test(r.headers.get("content-type") || "")) { draw(true); return; }
+      if (r && r.status === 404 && !(await r.clone().json().catch(() => ({}))).pending && Date.now() - started > 3000) break;
+      await sleep(2500);
+    }
+    draw(false);
+  };
 }
 
 // ---------------------------------------------------------------- you vs a competitor
