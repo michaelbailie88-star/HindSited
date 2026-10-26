@@ -7,6 +7,7 @@ import { sendMail } from "../lib/mail.mjs";
 import { EMAIL_RE, clean } from "../lib/password.mjs";
 import { esc } from "../lib/emails.mjs";
 import { WANTS } from "../../public/fix-guide.js";
+import { track, isOwner } from "../lib/events.mjs";
 
 const STUDIO = "thelazycreatorco@gmail.com";
 const KINDS = { redesign: "New website (redesign)", fix: "Fix the issues in my report", newsite: "New website request (no scan)" };
@@ -43,6 +44,7 @@ export default async (req) => {
       html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#14161b"><p style="font-size:18px;font-weight:800;margin:0 0 12px">${esc(KINDS[kind])}</p><table style="border-collapse:collapse;font-size:15px">${rows.map(([k, v]) => `<tr><td style="padding:4px 14px 4px 0;color:#676b74;vertical-align:top">${esc(k)}</td><td style="padding:4px 0">${/^https?:/.test(v) ? `<a href="${esc(v)}">${esc(v)}</a>` : esc(v)}</td></tr>`).join("")}</table><p style="white-space:pre-wrap;background:#f4f1ea;padding:14px;border-radius:10px;margin-top:14px">${esc(note || "(no message)")}</p><p style="font-size:13px;color:#676b74">Reply to this email to answer ${esc(name)} directly.</p></div>`
     });
   } catch { return json({ error: "Your request couldn't be sent right now. Email thelazycreatorco@gmail.com instead." }, 502); }
+  if (!isOwner(me)) await track("lead_sent", { tag: kind });
   return json({ sent: true });
 };
 

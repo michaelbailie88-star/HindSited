@@ -5,6 +5,7 @@ import { sessionEmail } from "../lib/session.mjs";
 import { getUser, saveUser, newUser } from "../lib/store.mjs";
 import { stripe, priceId } from "../lib/stripe.mjs";
 import { effectivePlan } from "../lib/entitle.mjs";
+import { track, isOwner } from "../lib/events.mjs";
 
 export default async (req) => {
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
@@ -38,6 +39,7 @@ export default async (req) => {
       metadata: { app: "hindsited", email, plan, interval },
       ...(interval === "month" ? { "subscription_data[metadata][app]": "hindsited", "subscription_data[metadata][plan]": plan, "subscription_data[metadata][email]": email } : { "payment_intent_data[metadata][app]": "hindsited", "payment_intent_data[metadata][plan]": plan })
     });
+    if (!isOwner(email)) await track("checkout_start", { tag: plan + "-" + interval });
     return json({ url: session.url });
   } catch (e) {
     console.error("checkout-failed", plan, interval, String(e && e.message).slice(0, 300));

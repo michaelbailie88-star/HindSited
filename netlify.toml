@@ -96,6 +96,11 @@
   to = "/paid.html"
   status = 200
 
+[[redirects]]
+  from = "/stats"
+  to = "/stats.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -129,6 +134,11 @@
 
 [[headers]]
   for = "/paid"
+  [headers.values]
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/stats"
   [headers.values]
     X-Frame-Options = "DENY"
 

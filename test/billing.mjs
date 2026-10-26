@@ -50,6 +50,8 @@ await p.waitForSelector(".rep-head", { timeout: 60000 });
 ok(new URL(p.url()).pathname === "/r/" + rid && !(await p.$(".lock-bar")) && /Your top 5 fixes/.test(await text(p)), "after paying they return to the same report, now fully unlocked");
 ok(/Start my new website/.test(await text(p)) && !/Fix It/.test(await text(p)), "paid report offers the new website, with no Fix It promise");
 ok(state.sessions["cs_test_0x"].price === "price_solo_m" && /back=%2Fr%2F/.test(state.sessions["cs_test_0x"].success_url), "checkout used the Solo monthly price and returns to the report");
+{ const ev = await (await import("../netlify/lib/events.mjs")).summary(1);
+  ok(ev.total.checkout_start === 1 && ev.tags.checkout_start["solo-month"] === 1 && ev.total.paid === 1 && ev.tags.paid["solo-month"] === 1, "funnel counted one Solo monthly checkout and one payment"); }
 let t = await dash();
 ok(!/fix your report/i.test(await (async () => { await p.goto(BASE + "/pricing"); await p.waitForSelector(".plans"); return text(p); })()), "pricing no longer promises to fix reports");
 t = await dash();

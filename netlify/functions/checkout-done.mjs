@@ -2,6 +2,7 @@
 // Stripe and only a completed, paid session unlocks anything (once).
 import { getUser, saveUser, newUser } from "../lib/store.mjs";
 import { stripe } from "../lib/stripe.mjs";
+import { track, isOwner } from "../lib/events.mjs";
 
 export default async (req) => {
   const u = new URL(req.url);
@@ -28,6 +29,7 @@ export default async (req) => {
     }
     if (s.customer && !user.customer) user.customer = s.customer;
     await saveUser(user);
+    if (!isOwner(email)) await track("paid", { tag: (md.plan || "plan") + "-" + (s.mode === "subscription" ? "month" : "once") });
   }
   return back("?checkout=success&plan=" + encodeURIComponent(md.plan || ""));
 };

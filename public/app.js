@@ -26,6 +26,12 @@ async function api(path, opts = {}) {
   } catch { return { status: 0, data: { error: "Couldn't reach HindSited. Check your connection." } }; }
 }
 
+// funnel counts (no personal data; see netlify/lib/events.mjs). Each one counts once per visit.
+function ping(e, once = e) {
+  try { if (sessionStorage.getItem("hs-ev:" + once)) return; sessionStorage.setItem("hs-ev:" + once, "1"); } catch {}
+  try { fetch(API + "/event", { method: "POST", keepalive: true, credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ e, ref: document.referrer || "" }) }).catch(() => {}); } catch {}
+}
+
 function step(name, state, note) {
   const li = document.querySelector(`[data-step="${name}"]`);
   if (!li) return;
@@ -75,6 +81,7 @@ const PRICES = {
   agency: { name: "Agency", for: "Up to 10 businesses", month: 79, once: 999, perks: ["Everything in Solo, for 10 businesses", "300 website checks a month", "Reports and PDFs with your own logo", "Add more businesses for $6 CAD/month each"] }
 };
 function showPaywall(d, url, back) {
+  ping("plans_view");
   const host = url ? new URL(url).hostname.replace(/^www\./, "") : "";
   const why = {
     "free-used": `You've already used your free check${d.site ? " (on <b>" + esc(d.site) + "</b>)" : ""}.`,
@@ -204,6 +211,7 @@ async function route() {
   const pending = q.get("scan");
   if (pending && cleanInput(pending)) { history.replaceState({}, "", "/"); input.value = pending.replace(/^https?:\/\//, ""); startScan(cleanInput(pending)); return; }
   view("home");
+  ping("home_view");
   if (location.hash === "#how") $("#how").scrollIntoView();
 }
 window.addEventListener("popstate", route);
@@ -412,11 +420,12 @@ async function showReport(report, scan, meta = {}) {
   };
   if ($("#savePdf")) $("#savePdf").onclick = () => { document.title = "HindSited report - " + host; window.print(); };
   window.onbeforeprint = () => document.querySelectorAll("details.cat").forEach((d) => d.setAttribute("open", ""));
-  rep.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => showPaywall({ reason: "unlock", site: meta.site || host }, null, reportPath)));
+  rep.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => { ping("unlock_click", "unlock:" + reportPath); showPaywall({ reason: "unlock", site: meta.site || host }, null, reportPath); }));
   wireOffers(rep, { reportId: meta.id, host, locked, back: reportPath });
   wireLoss(rep, { findings: report.findings, hidden: locked && hid.count ? hid : null, locked, back: reportPath, host, offers: !meta.brand });
   wireCompare(rep);
   view("report");
+  ping("report_view", "report:" + reportPath);
 }
 
 // ---------------------------------------------------------------- before & after (their site vs a real build)
@@ -495,7 +504,7 @@ function wireLoss(root, { findings, hidden, locked, back, host, offers }) {
         <p>Each issue is given a share of enquiries it typically costs a small-business site (our rule-of-thumb figures, not measured on your site). We combine them, so two issues don't count the same visitor twice${r.capped ? ", and we cap the total so it never says you could get more than 4 times the enquiries you get now" : ""}. Then: lost enquiries × your customers out of 10 × your customer value.</p>
         <ul class="ls-shares">${r.items.filter((x) => !x.hidden).map((x) => `<li><span>${esc(x.title)}</span><b>${Math.round(x.share * 100)}%</b></li>`).join("")}${hidden ? `<li><span>Each hidden issue (by how serious it is)</span><b>1 to 5%</b></li>` : ""}</ul>
         <p class="muted small">This is an estimate to help you decide what to fix first, not a promise. Real results depend on your market, your prices and how quickly you reply.</p></details>`;
-    out.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => showPaywall({ reason: "unlock", site: host }, null, back)));
+    out.querySelectorAll(".unlock-btn").forEach((b) => (b.onclick = () => { ping("unlock_click", "unlock:" + back); showPaywall({ reason: "unlock", site: host }, null, back); }));
   };
   f.oninput = draw; f.onsubmit = (e) => e.preventDefault();
   draw();
@@ -520,6 +529,7 @@ function offersHtml({ all, id, before }) {
     </article></div>`;
 }
 function wireOffers(root, { reportId, host, back }) {
+  root.querySelectorAll('a[href^="/fix/"]').forEach((a) => a.addEventListener("click", () => ping("build_click", "build:" + reportId)));
   root.querySelectorAll("[data-req]").forEach((b) => (b.onclick = () => {
     const kind = b.dataset.req, box = root.querySelector(`.req[data-for="${kind}"]`);
     if (!box.hidden) { box.hidden = true; return; }

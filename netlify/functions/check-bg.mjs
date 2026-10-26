@@ -7,6 +7,7 @@ import { reports, appSecret, getUser, saveUser } from "../lib/store.mjs";
 import { buildReport } from "../../public/rules.js";
 import { refund } from "../lib/refund.mjs";
 import { domainInfo } from "../lib/domain.mjs";
+import { track, isOwner } from "../lib/events.mjs";
 
 export default async (req) => {
   if (req.headers.get("x-hs-key") !== (await appSecret())) return;
@@ -17,6 +18,7 @@ export default async (req) => {
   const base = await store.get(id, { type: "json" });
   if (!base || base.state !== "queued") return;
   const keep = { url: base.url, site: base.site, owner: base.owner, free: base.free, tier: base.tier || (base.free ? "free" : "paid"), day: base.day || null, brand: base.brand || null, createdAt: base.createdAt };
+  const note = (ev) => (isOwner(keep.owner) ? null : track(ev, { tag: keep.free ? "free" : "paid" }));
   let chain = Promise.resolve();
   // saves run strictly in order so a late progress update never overwrites the result
   const save = (data) => (chain = chain.then(() => store.setJSON(id, { ...keep, ...data, at: new Date().toISOString() })).catch(() => {}));
@@ -37,11 +39,13 @@ export default async (req) => {
       const st = out.render && out.render.status;
       await save({ state: "error", stages, error: st ? `The site answered with error ${st}, so there was nothing to check.` : "The site didn't load." });
       await refund(keep.owner, id, keep.site, keep.free, keep.day).catch(() => {});
+      await note("scan_error");
       return;
     }
     const r = buildReport(out.scan);
     await save({ state: "done", stages, timings: out.timings, score: r.score, grade: r.grade.label, scan: out.scan });
     await chain;
+    await note("scan_done");
     if (keep.owner) await noteScore(keep.owner, id, r).catch(() => {});
   } catch (e) {
     const m = String((e && e.code) || "") + " " + String((e && e.message) || e);
@@ -51,6 +55,7 @@ export default async (req) => {
       : "Something went wrong checking the site. Try again in a minute.";
     await save({ state: "error", error: friendly, detail: m.slice(0, 400) });
     await refund(keep.owner, id, keep.site, keep.free, keep.day).catch(() => {});
+    await note("scan_error");
   } finally {
     if (browser) await browser.close().catch(() => {});
   }

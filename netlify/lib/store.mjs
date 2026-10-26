@@ -52,6 +52,7 @@ export function newUser(email) {
 export const OWNER_EMAILS = ["thelazycreatorco@gmail.com", "michaelbailie88@icloud.com"];
 export const reviewsStore = () => S("site-reviews");
 export const counters = () => S("counters");
+export const events = () => S("events");
 // One-way fingerprint for abuse records (free-scan / free-kit claims, daily
 // limits): lets us recognise a repeat without keeping the email or IP itself.
 export async function fingerprint(value) {

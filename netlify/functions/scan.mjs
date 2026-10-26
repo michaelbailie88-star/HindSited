@@ -10,6 +10,7 @@ import { effectivePlan } from "../lib/entitle.mjs";
 import { refreshSubscriptions } from "../lib/stripe.mjs";
 import { PLANS, monthKey } from "../lib/plans.mjs";
 import { refund } from "../lib/refund.mjs";
+import { track, isOwner } from "../lib/events.mjs";
 
 const IP_DAYS = 30; // one free scan per internet connection per 30 days
 const DEV_COOKIE = "hs_dev";
@@ -96,6 +97,7 @@ async function handle(req, context, devId) {
     await refund(email, id, site, free, dayKey);
     return json({ error: "Couldn't start the check. Try again in a minute." }, 502);
   }
+  if (!isOwner(email)) await track("scan_start", { tag: free ? "free" : "paid" });
   return json({ id });
 }
 
