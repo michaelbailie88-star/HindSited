@@ -52,7 +52,10 @@ export default async (req) => {
   } catch (e) {
     const m = String((e && e.code) || "") + " " + String((e && e.message) || e);
     const friendly = /blocked-host/.test(m) ? "That address isn't a public website."
-      : /ENOTFOUND|EAI_AGAIN|EBUSY|getaddrinfo|ERR_NAME_NOT_RESOLVED/.test(m) ? "We couldn't find that website. Check the spelling."
+      : /ENOTFOUND|ERR_NAME_NOT_RESOLVED/.test(m) ? "We couldn't find that website. Check the spelling."
+      : /EAI_AGAIN|EBUSY|ETIMEOUT|getaddrinfo/.test(m) ? "We couldn't look that website up just now. Try again in a minute."
+      : /ERR_TOO_MANY_REDIRECTS/.test(m) ? "That website keeps redirecting in a loop, so it can't be opened. That's a real problem on the site."
+      : /timeout:|Execution context|detached|Target closed/.test(m) ? "That page was too busy to inspect. It may be very heavy or reloading itself. Try again in a minute."
       : /ERR_CONNECTION|ERR_TIMED_OUT|ERR_SSL|ERR_CERT/.test(m) ? "The website wouldn't connect. It may be down or have a security certificate problem."
       : "Something went wrong checking the site. Try again in a minute.";
     await save({ state: "error", error: friendly, detail: m.slice(0, 400) });

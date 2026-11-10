@@ -39,7 +39,14 @@ export async function assertPublicHost(hostname) {
   if (/^localhost$|\.local$|\.internal$|\.localhost$/i.test(h)) throw new Error("blocked-host");
   if (net.isIP(h)) { if (isPrivateIp(h)) throw new Error("blocked-host"); return; }
   if (dnsCache.has(h)) { if (!dnsCache.get(h)) throw new Error("blocked-host"); return; }
-  const addrs = await dns.lookup(h, { all: true });
+  let addrs;
+  try { addrs = await dns.lookup(h, { all: true }); }
+  catch (e) {
+    // a lookup that fails once is often just busy: try again before giving up
+    if (!/EAI_AGAIN|EBUSY|ETIMEOUT|ECONNREFUSED/.test(String((e && e.code) || e))) throw e;
+    await new Promise((r) => setTimeout(r, 600));
+    addrs = await dns.lookup(h, { all: true });
+  }
   const ok = addrs.length > 0 && addrs.every((a) => !isPrivateIp(a.address));
   dnsCache.set(h, ok);
   if (!ok) throw new Error("blocked-host");

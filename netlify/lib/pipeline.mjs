@@ -13,8 +13,18 @@ export async function fullScan(browser, url, { psiKey, log = () => {} } = {}) {
   const t = {}; const t0 = Date.now();
   // one page at a time keeps memory low on small servers
   let render;
+  const TRANSIENT = /timeout:|Execution context|detached|Target closed|ERR_FAILED|ERR_ABORTED|ERR_NETWORK_CHANGED|ERR_HTTP2|ERR_EMPTY_RESPONSE/;
+  const renderOnce = async () => {
+    try { return await renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) }); }
+    catch (e) {
+      // a busy or self-reloading page often works the second time
+      if (!TRANSIENT.test(String(e.message))) throw e;
+      log("retry-render");
+      return await renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) });
+    }
+  };
   try {
-    render = await renderAudit(browser, url, { budgetMs: 55000, onStage: (st) => log("render:" + st) });
+    render = await renderOnce();
   } catch (e) {
     // plenty of small-business sites still only work over plain http
     if (!/^https:/i.test(url) || !/ERR_(SSL|CERT|CONNECTION_REFUSED|CONNECTION_RESET|CONNECTION_CLOSED|EMPTY_RESPONSE|TIMED_OUT)/.test(String(e.message))) throw e;
